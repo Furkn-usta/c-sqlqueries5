@@ -1,0 +1,496 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparisIhtiyacKontrol" Enabled="true" Priority="0" ScriptName="SiparisIhtiyacKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="PurchaseOrderBeforePost" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="ReceiptBeforePost" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="InvoiceBeforePost" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="Omer" EntryDate="2022-08-26T00:00:00">
+      <Change />
+    </History>
+    <History EditedBy="Omer" EntryDate="2022-09-02T00:00:00">
+      <Change />
+    </History>
+    <History EditedBy="Omer" EntryDate="2022-09-06T00:00:00">
+      <Change />
+    </History>
+    <History EditedBy="Omer" EntryDate="2022-09-09T00:00:00">
+      <Change />
+    </History>
+    <History EditedBy="Omer" EntryDate="2022-09-30T00:00:00">
+      <Change>Tahsis kontrolü düzeltildi.</Change>
+    </History>
+    <History EditedBy="Omer" EntryDate="2022-10-03T00:00:00">
+      <Change>Sipariş ve İrsaliye arasında birim fiyat haricinde döviz cinsi ve döviz fiyat kontrolü eklendi.
+Faturanın kendi içerisindeki mevcut kontrollere döviz cinsi ve döviz fiyat kontrolü de dahil edildi.</Change>
+    </History>
+    <History EditedBy="Omer" EntryDate="2022-10-06T00:00:00">
+      <Change />
+    </History>
+  </Histories>
+  <ScriptText>function PurchaseOrderBeforePost (sender, eventArg)
+{
+	if (BaseObject == null 
+		|| BaseObject.Name != "OrderReceiptEN" 
+		|| BaseObject.CurrentRow == null 
+		|| BaseObject.CurrentRow.Row == null)
+		return null;
+	
+	//	Sadece satin alma siparislerinde
+	if (BaseObject.CurrentRow.Row.IsNull("ReceiptType") || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+		return null;
+	
+	//	Daha once uyari yapilan ve kullanici tarafindan onayli duruma getirilen fise tekrar uyari yapilmasin
+	if (!BaseObject.CurrentRow.Row.IsNull("UD_Unapproved") &amp;&amp; Convert.ToBoolean(BaseObject.CurrentRow.Row["UD_Unapproved"]) &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ApprovedBy"))
+		return null;
+
+	error = false;
+	script_message = new StringBuilder();
+	compute_filter = new StringBuilder();
+	requirement_q = new StringBuilder();
+	allocation_q = new StringBuilder();
+   
+	foreach (ori in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("ItemType = 1 and InventoryId is not null")) 
+	{
+        if (ori.RowState == DataRowState.Detached || ori.RowState == DataRowState.Deleted)
+			continue;
+		
+		ia_table = BaseObject.Data.Tables["IM_ItemAllocation"].Select("OrderReceiptItemId = "+ori["RecId"].ToString());
+		if (ia_table == null || ia_table.Length == 0)
+		{
+			BaseObject.ShowMessage(ori["ItemOrderNo"].ToString()+". Satırdaki malzeme için tahsis bilgisi mevcut değil.");
+			script_message.AppendLine(ori["ItemOrderNo"].ToString()+". Satırdaki malzeme için tahsis bilgisi mevcut değil."+Environment.NewLine);
+			error = true;			
+			continue;		
+		}
+	/*	
+		tolerance_q = "select TrimClassCardId, isnull(UD_SAOran,0) UD_SAOran from IM_Item with (nolock) where RecId ="+ori["InventoryId"].ToString();
+		tolerance_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", tolerance_q.ToString());
+		tolerance = 0m;
+		
+		//	Malzeme karti veya aksesuar tip kartinda tanimli tolerans (UD_SAOran) var ise
+		if (tolerance_dt != null &amp;&amp; tolerance_dt.Rows.Count &gt; 0)
+		{
+			if (!tolerance_dt.Rows[0].IsNull("TrimClassCardId"))
+			{
+				trim_type_q = "select isnull(UD_SAOran,0) UD_SAOran from IM_Item with (nolock) where RecId ="+tolerance_dt.Rows[0]["TrimClassCardId"].ToString();
+				trim_type_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", trim_type_q.ToString());
+				
+				if (trim_type_dt != null 
+					&amp;&amp; trim_type_dt.Rows.Count &gt; 0 
+					&amp;&amp; !trim_type_dt.Rows[0].IsNull("UD_SAOran") 
+					&amp;&amp; Convert.ToDecimal(trim_type_dt.Rows[0]["UD_SAOran"]) &gt; 0m)
+					tolerance = Convert.ToDecimal(trim_type_dt.Rows[0]["UD_SAOran"]);
+			}
+			
+			else if (!tolerance_dt.Rows[0].IsNull("UD_SAOran") &amp;&amp; Convert.ToDecimal(tolerance_dt.Rows[0]["UD_SAOran"]) &gt; 0m)
+				tolerance = Convert.ToDecimal(tolerance_dt.Rows[0]["UD_SAOran"]);
+		}*/
+	        
+	    foreach (ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("WorkOrderItemId is not null and OrderReceiptItemId = "+ori["RecId"].ToString())) 
+		{
+		    if (ia.RowState == DataRowState.Detached || ia.RowState == DataRowState.Deleted)
+				continue;
+
+			variant1Code = string.Empty;
+			if (!string.IsNullOrEmpty(ia["ItemVariant1Code"].ToString()) &amp;&amp; !string.IsNullOrWhiteSpace(ia["ItemVariant1Code"].ToString())) 
+				variant1Code = ia["ItemVariant1Code"].ToString();
+			
+			variant2Code = string.Empty;
+			if (!string.IsNullOrEmpty(ia["ItemVariant2Code"].ToString()) &amp;&amp; !string.IsNullOrWhiteSpace(ia["ItemVariant2Code"].ToString())) 
+				variant2Code = ia["ItemVariant2Code"].ToString();
+			
+			requirementGroup = string.Empty;
+			if (!string.IsNullOrEmpty(ia["RequirementGroup"].ToString()) &amp;&amp; !string.IsNullOrWhiteSpace(ia["RequirementGroup"].ToString()))
+				requirementGroup = ia["RequirementGroup"].ToString();
+			
+			operationType = Convert.ToInt16(0);
+			if (!DoubleUtil.CompareFloatIsNullOrZero(ia["OperationType"],0))
+				operationType = Convert.ToInt16(ia["OperationType"]);
+			
+			requirement_q.Clear();
+			requirement_q.AppendLine("select");
+			requirement_q.AppendLine("sum(isnull(Quantity,0)) Quantity");
+			requirement_q.AppendLine("from MA_Requirement R with (nolock)");
+			requirement_q.AppendLine("where R.InventoryId = "+ia["InventoryId"].ToString()); 
+			requirement_q.AppendLine("and R.WorkOrderItemId = "+ia["WorkOrderItemId"].ToString());
+			requirement_q.AppendLine("and isnull(R.Variant1,\'\') = \'"+variant1Code+"\'");
+			requirement_q.AppendLine("and isnull(R.Variant2,\'\') = \'"+variant2Code+"\'");
+			requirement_q.AppendLine("and isnull(R.RequirementGroup,\'\') = \'"+requirementGroup+"\'");
+			requirement_q.AppendLine("and isnull(R.OperationType,0) = "+operationType.ToString());
+	        requirement_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", requirement_q.ToString());
+		    
+			requirement_with_tolerance = 0m;
+			
+			//	Tolerans dahil ihtiyac miktari
+			if (requirement_dt != null 
+				&amp;&amp; requirement_dt.Rows.Count &gt; 0 
+				&amp;&amp; !requirement_dt.Rows[0].IsNull("Quantity") 
+				&amp;&amp; Convert.ToDecimal(requirement_dt.Rows[0]["Quantity"]) &gt; 0m)
+				requirement_with_tolerance = Convert.ToDecimal(requirement_dt.Rows[0]["Quantity"]);
+			
+			else
+			{
+				BaseObject.ShowMessage(ori["ItemOrderNo"]+". Satırdaki malzeme için tedarik hesaplaması mevcut değil.");
+				script_message.AppendLine(ori["ItemOrderNo"]+". Satırdaki malzeme için tedarik hesaplaması mevcut değil."+Environment.NewLine);
+				error = true;				
+				continue;
+			}
+			
+			this_receipt_allocation = 0m;
+			compute_filter.Clear();
+			compute_filter.AppendLine("InventoryId = "+ia["InventoryId"].ToString());
+			compute_filter.AppendLine("and WorkOrderItemId = "+ia["WorkOrderItemId"].ToString());
+			compute_filter.AppendLine("and isnull(ItemVariant1Code,\'\') = \'"+variant1Code+"\'");
+			compute_filter.AppendLine("and isnull(ItemVariant2Code,\'\') = \'"+variant2Code+"\'");
+			compute_filter.AppendLine("and isnull(RequirementGroup,\'\') = \'"+requirementGroup+"\'");
+			compute_filter.AppendLine("and isnull(OperationType,0) = "+operationType.ToString());
+			
+			//	Mevcut fis genelindeki mevcut satirdaki malzeme icin toplam miktar
+			this_receipt_allocation = Convert.ToDecimal(BaseObject.Data.Tables["IM_ItemAllocation"].Compute("sum(Quantity)", compute_filter.ToString()));
+			
+			//	Mevcut fisteki toplam miktar tolerans dahil ihtiyac miktarindan fazla ise
+			if (this_receipt_allocation &gt; requirement_with_tolerance)
+			{
+				BaseObject.ShowMessage(ori["ItemOrderNo"]+". Satırdaki malzeme için sipariş miktar toplamı ihtiyaç miktarından fazla. ");
+				script_message.AppendLine(ori["ItemOrderNo"]+". Satırdaki malzeme için sipariş miktar toplamı ihtiyaç miktarından fazla. "+Environment.NewLine);
+				error = true;
+				continue;
+			}
+			
+			allocation_q.Clear();
+			allocation_q.AppendLine("select sum(isnull(IA.Quantity,0)) Quantity");
+			allocation_q.AppendLine("from IM_ItemAllocation IA with (nolock)");
+			allocation_q.AppendLine("left join IM_ItemVariant IV with (nolock) on IA.InventoryVariantId = IV.RecId");
+			allocation_q.AppendLine("left join IM_VariantItem V1 with (nolock) on V1.RecId = IV.Variant1Id");
+			allocation_q.AppendLine("left join IM_VariantItem V2 with (nolock) on V2.RecId = IV.Variant2Id");
+			allocation_q.AppendLine("where IA.OrderReceiptType in (1)");
+			allocation_q.AppendLine("and IA.OrderReceiptItemId not in (select RecId from IM_OrderReceiptItem with (nolock) where OrderReceiptId = "+ori["OrderReceiptId"].ToString()+")");
+			allocation_q.AppendLine("and IA.InventoryId = "+ia["InventoryId"].ToString());
+			allocation_q.AppendLine("and IA.WorkOrderItemId = "+ia["WorkOrderItemId"].ToString());
+			allocation_q.AppendLine("and isnull(V1.ItemCode,\'\') = \'"+variant1Code+"\'");
+			allocation_q.AppendLine("and isnull(V2.ItemCode,\'\') = \'"+variant2Code+"\'");
+			allocation_q.AppendLine("and isnull(IA.RequirementGroup,\'\') = \'"+requirementGroup+"\'");
+			allocation_q.AppendLine("and isnull(IA.OperationType,0) = "+operationType.ToString());
+			allocation_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", allocation_q.ToString());
+		    
+			other_receipt_allocation = 0m;
+			
+			//	Mevcut malzeme icin mevcut fis haricindeki fislerin toplam miktari
+			if (allocation_dt != null 
+				&amp;&amp; allocation_dt.Rows.Count &gt; 0 
+				&amp;&amp; !allocation_dt.Rows[0].IsNull("Quantity") 
+				&amp;&amp; Convert.ToDecimal(allocation_dt.Rows[0]["Quantity"]) &gt; 0m)
+		        other_receipt_allocation = Convert.ToDecimal(allocation_dt.Rows[0]["Quantity"]);
+		    
+		    //	Mevcut fis ve diger fislerin toplami toleransli ihtiyac miktarindan fazla ise
+			if ((this_receipt_allocation + other_receipt_allocation) &gt; requirement_with_tolerance)
+			{       
+				BaseObject.ShowMessage(ori["ItemOrderNo"]+". Satırdaki malzeme için sipariş miktar toplamı ihtiyaç miktarından fazla.");
+				script_message.AppendLine(ori["ItemOrderNo"]+". Satırdaki malzeme için sipariş miktar toplamı ihtiyaç miktarından fazla."+Environment.NewLine);
+				error = true;
+				continue;
+		    }
+	    }
+    }
+	
+	BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_ScriptMessage", script_message.ToString());
+	
+	if (error)
+	{
+		BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved", 0);
+		BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Unapproved", 1);
+		return null;
+	}
+}
+
+function ReceiptBeforePost (sender, eventArg)
+{	
+	if (BaseObject == null 
+		|| BaseObject.Name != "InventoryReceiptEN"
+		|| BaseObject.CurrentRow == null 
+		|| BaseObject.CurrentRow.Row == null)
+		return null;
+		
+	//	Yalnizca satin alma irsaliyeleri
+	if (BaseObject.CurrentRow.Row.IsNull("ReceiptType") || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+		return null;
+	
+	//	Daha once uyari yapilan ve kullanici tarafindan onayli duruma getirilen fise tekrar uyari yapilmasin
+	if (!BaseObject.CurrentRow.Row.IsNull("UD_Unapproved") &amp;&amp; Convert.ToBoolean(BaseObject.CurrentRow.Row["UD_Unapproved"]) &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ApprovedBy"))
+		return null;
+	
+	error = false;
+	script_message = new StringBuilder();
+	po_q = new StringBuilder();
+	
+	foreach (ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("ItemType = 1 and InventoryId is not null and OrderReceiptItemId is not null")) 
+	{
+        if (ri.RowState == DataRowState.Detached || ri.RowState == DataRowState.Deleted)
+			continue;
+
+		if (!BaseObject.CurrentRow.Row.HasVersion(DataRowVersion.Original))
+			return null;
+		
+		po_q.Clear();
+		po_q.AppendLine("select isnull(Quantity,0) Quantity, isnull(UnitPrice,0) UnitPrice, isnull(ForexId,0) ForexId, isnull(ForexUnitPrice,0) ForexUnitPrice"); 
+		po_q.AppendLine("from IM_OrderReceiptItem with (nolock) where RecId = "+ri["OrderReceiptItemId"].ToString());
+		po_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", po_q.ToString());
+
+		if (po_dt == null || po_dt.Rows.Count == 0)
+			continue;
+		
+		po_quantity = 0m;
+		if (!DoubleUtil.CompareFloatIsNullOrZero(po_dt.Rows[0]["Quantity"],0))
+			po_quantity = Convert.ToDecimal(po_dt.Rows[0]["Quantity"]);
+		
+		po_unit_price = 0m;
+		if (!DoubleUtil.CompareFloatIsNullOrZero(po_dt.Rows[0]["UnitPrice"],0))
+			po_unit_price = Convert.ToDecimal(po_dt.Rows[0]["UnitPrice"]);
+		
+		po_forex_id = 0;
+		if (!DoubleUtil.CompareFloatIsNullOrZero(po_dt.Rows[0]["ForexId"],0))
+			po_forex_id = Convert.ToInt32(po_dt.Rows[0]["ForexId"]);
+			
+		po_forex_unit_price = 0m;
+		if (!DoubleUtil.CompareFloatIsNullOrZero(po_dt.Rows[0]["ForexUnitPrice"],0))
+			po_forex_unit_price = Convert.ToDecimal(po_dt.Rows[0]["ForexUnitPrice"]);
+		
+		receipt_quantity = 0m;
+		if (ri["Quantity"] != DBNull.Value)
+			receipt_quantity = Convert.ToDecimal(ri["Quantity"]);		
+		
+		receipt_unit_price = 0m;
+		if (ri["UnitPrice"] != DBNull.Value)
+			receipt_unit_price = Convert.ToDecimal(ri["UnitPrice"]);
+			
+		receipt_forex_id = 0;
+		if (ri["ForexId"] != DBNull.Value)
+			receipt_forex_id = Convert.ToInt32(ri["ForexId"]);
+			
+		receipt_forex_unit_price = 0m;
+		if (ri["ForexUnitPrice"] != DBNull.Value)
+			receipt_forex_unit_price = Convert.ToDecimal(ri["ForexUnitPrice"]);
+				
+		//	Irsaliye miktari satin alma siparisi miktarindan fazla ise
+		if (receipt_quantity &gt; po_quantity)
+		{
+			BaseObject.ShowMessage(ri["ItemOrderNo"].ToString()+". Satırdaki miktar, satın alma siparişinde belirtilen miktardan yüksek.");
+			script_message.AppendLine(ri["ItemOrderNo"].ToString()+". Satırdaki miktar, satın alma siparişinde belirtilen miktardan yüksek."+Environment.NewLine);			
+			error = true;			
+		}
+		
+		//	Irsaliye birim fiyati satin alma siparisi birim fiyatindan yuksek ise
+		if (receipt_unit_price &gt; po_unit_price)
+		{
+			BaseObject.ShowMessage(ri["ItemOrderNo"].ToString()+". Satırdaki birim fiyat, satın alma siparişinde belirtilen birim fiyattan yüksek.");
+			script_message.AppendLine(ri["ItemOrderNo"].ToString()+". Satırdaki birim fiyat, satın alma siparişinde belirtilen birim fiyattan yüksek."+Environment.NewLine);			
+			error = true;			
+		}
+				
+		po_forex_string = string.Empty;
+		f_q = string.Empty;		
+		f_q = "select ForexCode from MD_Forex with (nolock) where RecId = "+po_forex_id.ToString();
+		f_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", f_q.ToString());
+		if (f_dt != null &amp;&amp; f_dt.Rows.Count &gt; 0)
+		{
+			if (!f_dt.Rows[0].IsNull("ForexCode"))
+				po_forex_string = f_dt.Rows[0]["ForexCode"].ToString();
+		}		
+		
+		// Irsaliye doviz cinsi satin alma siparisi doviz cinsinden farkliysa
+		if (receipt_forex_id != po_forex_id)
+		{
+			BaseObject.ShowMessage(ri["ItemOrderNo"]+". Satırdaki döviz cinsi, satın alma siparişinde belirtilen döviz cinsinden farklı. Satın almada belirtilen döviz cinsi: "+po_forex_string);
+			script_message.AppendLine(ri["ItemOrderNo"]+". Satırdaki döviz cinsi, satın alma siparişinde belirtilen döviz cinsinden farklı. Satın almada belirtilen döviz cinsi: "+po_forex_string+Environment.NewLine);			
+			error = true;
+		}		
+		
+		// Irsaliye doviz birim fiyat satin alma doviz birim fiyattan farkliysa
+		if (receipt_forex_unit_price != po_forex_unit_price)
+		{			
+			BaseObject.ShowMessage(ri["ItemOrderNo"]+". Satırdaki döviz fiyat, satın alma siparişinde belirtilen döviz fiyattan farklı. Satın almada belirtilen döviz fiyat: "+po_forex_unit_price.ToString("0.00##")+" "+po_forex_string);
+			script_message.AppendLine(ri["ItemOrderNo"]+". Satırdaki döviz fiyat, satın alma siparişinde belirtilen döviz fiyattan farklı. Satın almada belirtilen döviz fiyat: "+po_forex_unit_price.ToString("0.00##")+" "+po_forex_string+Environment.NewLine);			
+			error = true;
+		}
+	}
+	
+	BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_ScriptMessage", script_message.ToString());
+	
+	if (error)
+	{
+		BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved", 0);
+		BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Unapproved", 1);
+		return null;
+	}
+}
+
+function InvoiceBeforePost (sender, eventArg)
+{	
+	if (BaseObject == null 
+		|| BaseObject.Name != "InvoiceEN"
+		|| BaseObject.CurrentRow == null 
+		|| BaseObject.CurrentRow.Row == null)
+		return null;
+		
+	//	Yalnizca satin alma faturalari
+	if (BaseObject.CurrentRow.Row.IsNull("ReceiptType") || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+		return null;
+	
+	// 	Fatura direkt siparisten olusur ise
+	if (BaseObject.IsNewRecord)
+	{
+		foreach (ric in BaseObject.Data.Tables["IM_ReceiptItem"].Rows) 	
+		{
+			if (ric.RowState == DataRowState.Added &amp;&amp; !ric.IsNull("OrderReceiptItemId"))
+			{
+				BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Unapproved", 0);
+				break;
+			}	
+		}		
+	}
+	
+	//	Daha once uyari yapilan ve kullanici tarafindan onayli duruma getirilen fise tekrar uyari yapilmasin
+	if (!BaseObject.CurrentRow.Row.IsNull("UD_Unapproved") &amp;&amp; Convert.ToBoolean(BaseObject.CurrentRow.Row["UD_Unapproved"]) &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ApprovedBy"))
+		return null;
+	
+	error = false;
+	script_message = new StringBuilder();
+	old_script_message = string.Empty;
+	po_q = new StringBuilder();
+	
+	foreach (ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("ItemType = 1 and InventoryId is not null and OrderReceiptItemId is not null")) 
+	{
+        if (ri.RowState == DataRowState.Detached || ri.RowState == DataRowState.Deleted)
+			continue;
+
+		if (!BaseObject.CurrentRow.Row.HasVersion(DataRowVersion.Original))
+			return null;
+		
+		po_q.Clear();
+		po_q.AppendLine("select isnull(ORI.UnitPrice,0) UnitPrice, isnull(ORI.Quantity,0) Quantity, isnull((select ForexCode from MD_Forex with (nolock) where RecId = ORI.ForexId),\'TL\') ForexCode, isnull(ORI.ForexUnitPrice,0) ForexUnitPrice"); 
+		po_q.AppendLine("from IM_OrderReceiptItem ORI with (nolock) where ORI.RecId = "+ri["OrderReceiptItemId"].ToString());
+		po_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", po_q.ToString());
+
+		if (po_dt == null || po_dt.Rows.Count == 0)
+			continue;
+		
+		po_unit_price = 0m;
+		if (!DoubleUtil.CompareFloatIsNullOrZero(po_dt.Rows[0]["UnitPrice"],0))
+			po_unit_price = Convert.ToDecimal(po_dt.Rows[0]["UnitPrice"]);
+		
+		po_quantity = 0m;
+		if (!DoubleUtil.CompareFloatIsNullOrZero(po_dt.Rows[0]["Quantity"],0))
+			po_quantity = Convert.ToDecimal(po_dt.Rows[0]["Quantity"]);		
+		
+		po_forex_code = string.Empty;
+		if (!po_dt.Rows[0].IsNull("ForexCode"))
+			po_forex_code = Convert.ToString(po_dt.Rows[0]["ForexCode"]);
+		
+		po_forex_price = 0m;
+		if (!DoubleUtil.CompareFloatIsNullOrZero(po_dt.Rows[0]["ForexUnitPrice"],0))
+			po_forex_price = Convert.ToDecimal(po_dt.Rows[0]["ForexUnitPrice"]);		
+		
+		date_time = DateTime.Now;
+
+		old_unit_price = 0m;
+		if (ri["UnitPrice", DataRowVersion.Original] != DBNull.Value)
+			old_unit_price = Convert.ToDecimal(ri["UnitPrice", DataRowVersion.Original]);
+
+		new_unit_price = 0m;
+		if (ri["UnitPrice"] != DBNull.Value)
+			new_unit_price = Convert.ToDecimal(ri["UnitPrice"]);
+		
+		//	Satirdaki fiyatta artis olursa
+		if (new_unit_price &gt; old_unit_price)
+		{
+			BaseObject.ShowMessage(ri["ItemOrderNo"].ToString()+". Satırdaki birim fiyatta artış meydana geldi. Sipariş Birim Fiyat: "+po_unit_price.ToString("0.##")+"  Eski Birim Fiyat: "+old_unit_price.ToString("0.##")+"  Yeni Birim Fiyat: "+new_unit_price.ToString("0.##")+"  Değişiklik: "+date_time.ToString());
+			script_message.AppendLine(ri["ItemOrderNo"].ToString()+". Satırdaki birim fiyatta artış meydana geldi. Sipariş Birim Fiyat: "+po_unit_price.ToString("0.##")+"  Eski Birim Fiyat: "+old_unit_price.ToString("0.##")+"  Yeni Birim Fiyat: "+new_unit_price.ToString("0.##")+"  Değişiklik: "+date_time.ToString()+Environment.NewLine);
+			error = true;
+		}
+		
+		old_quantity = 0m;
+		if (ri["Quantity", DataRowVersion.Original] != DBNull.Value)
+			old_quantity = Convert.ToDecimal(ri["Quantity", DataRowVersion.Original]);
+		
+		new_quantity = 0m;
+		if (ri["Quantity"] != DBNull.Value)
+			new_quantity = Convert.ToDecimal(ri["Quantity"]);
+		
+		//	Satirdaki miktarda artis olursa
+		if (new_quantity &gt; old_quantity)
+		{
+			BaseObject.ShowMessage(ri["ItemOrderNo"].ToString()+". Satırdaki miktarda artış meydana geldi. Sipariş Miktar: "+po_quantity.ToString("0.##")+"  Eski Miktar: "+old_quantity.ToString("0.##")+"  Yeni Miktar: "+new_quantity.ToString("0.##")+"  Değişiklik: "+date_time.ToString());
+			script_message.AppendLine(ri["ItemOrderNo"].ToString()+". Satırdaki miktarda artış meydana geldi. Sipariş Miktar: "+po_quantity.ToString("0.##")+"  Eski Miktar: "+old_quantity.ToString("0.##")+"  Yeni Miktar: "+new_quantity.ToString("0.##")+"  Değişiklik: "+date_time.ToString()+Environment.NewLine);
+			error = true;
+		}
+		
+		old_forex = 0;
+		if (ri["ForexId", DataRowVersion.Original] != DBNull.Value)
+			old_forex = Convert.ToInt32(ri["ForexId", DataRowVersion.Original]);
+		
+		new_forex = 0;
+		if (ri["ForexId"] != DBNull.Value)
+			new_forex = Convert.ToInt32(ri["ForexId"]);
+		
+		old_forex_price = 0m;
+		if (ri["ForexUnitPrice", DataRowVersion.Original] != DBNull.Value)
+			old_forex_price = Convert.ToDecimal(ri["ForexUnitPrice", DataRowVersion.Original]);
+		
+		new_forex_price = 0m;
+		if (ri["ForexUnitPrice"] != DBNull.Value)
+			new_forex_price = Convert.ToDecimal(ri["ForexUnitPrice"]);
+		
+		old_new_forex = "select (select isnull(ForexCode,\'\') from MD_Forex with (nolock) where RecId = "+old_forex.ToString()+") OldForex, (select isnull(ForexCode,\'\') from MD_Forex with (nolock) where RecId = "+new_forex.ToString()+") NewForex";
+		forex_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", old_new_forex.ToString());
+		
+		old_forex_code = string.Empty;
+		new_forex_code = string.Empty;
+		
+		if (forex_dt != null &amp;&amp; forex_dt.Rows.Count &gt; 0)
+		{
+			if (!forex_dt.Rows[0].IsNull("OldForex"))
+				old_forex_code = Convert.ToString(forex_dt.Rows[0]["OldForex"]);
+			
+			if (!forex_dt.Rows[0].IsNull("NewForex"))
+				new_forex_code = Convert.ToString(forex_dt.Rows[0]["NewForex"]);
+		}
+
+		// Doviz cinsi degisir ise
+		if (new_forex != old_forex)
+		{	
+			BaseObject.ShowMessage(ri["ItemOrderNo"]+". Satırdaki döviz cinsi değişti. Sipariş Döviz Cinsi: "+po_forex_code.ToString()+"  Eski Döviz Cinsi: "+old_forex_code.ToString()+"  Yeni Döviz Cinsi: "+new_forex_code.ToString()+"  Değişiklik: "+date_time.ToString());
+			script_message.AppendLine(ri["ItemOrderNo"]+". Satırdaki döviz cinsi değişti. Sipariş Döviz Cinsi: "+po_forex_code.ToString()+"  Eski Döviz Cinsi: "+old_forex_code.ToString()+"  Yeni Döviz Cinsi: "+new_forex_code.ToString()+"  Değişiklik: "+date_time.ToString()+Environment.NewLine);
+			error = true;
+		}	
+
+		// Doviz fiyat artar ise
+		if (new_forex_price &gt; old_forex_price)
+		{
+			BaseObject.ShowMessage(ri["ItemOrderNo"]+". Satırdaki döviz fiyatta değişiklik meydana geldi. Sipariş Döviz fiyat: "+po_forex_price.ToString("0.00##")+" "+po_forex_code.ToString()+"  Eski Fiyat: "+old_forex_price.ToString("0.00##")+" "+old_forex_code.ToString()+"  Yeni Fiyat: "+new_forex_price.ToString("0.00##")+" "+new_forex_code.ToString()+"  Değişiklik: "+date_time.ToString());
+			script_message.AppendLine(ri["ItemOrderNo"]+". Satırdaki döviz fiyatta değişiklik meydana geldi. Sipariş Döviz fiyat: "+po_forex_price.ToString("0.00##")+" "+po_forex_code.ToString()+"  Eski Fiyat: "+old_forex_price.ToString("0.00##")+" "+old_forex_code.ToString()+"  Yeni Fiyat: "+new_forex_price.ToString("0.00##")+" "+new_forex_code.ToString()+"  Değişiklik: "+date_time.ToString()+Environment.NewLine);
+			error = true;
+		}		
+	}
+	
+	if (!BaseObject.CurrentRow.Row.IsNull("UD_ScriptMessage"))
+		old_script_message = Convert.ToString(BaseObject.CurrentRow.Row["UD_ScriptMessage"]);
+	
+	if (error)
+	{
+		BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved", 0);
+		BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Unapproved", 1);
+		
+		if (old_script_message != string.Empty)
+			BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_ScriptMessage", old_script_message+script_message.ToString());
+		else
+			BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_ScriptMessage", script_message.ToString());
+		
+		return null;
+	}
+}</ScriptText>
+</ScriptDefinition>

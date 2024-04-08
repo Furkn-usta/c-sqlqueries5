@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisSıraNoEkleme" Enabled="true" Priority="0" ScriptName="TahsisSıraNoEkleme">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="AfterPost" FunctionName="OnAfterPost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 10.08.2023 15:18:18	TahsisSıraNoEkleme	TahsisSıraNoEkleme	0	True
+function OnAfterPost(sender, ev)
+{ 
+
+	if(BaseObject == null 	
+	|| BaseObject.CurrentRow == null 	
+	|| BaseObject.CurrentRow.Row == null)
+		return null;
+			foreach(ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("RecId is not null"))
+		        {   
+					foreach(ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("InventoryReceiptItemId is not null and InventoryReceiptItemId=\'"+ri["RecId"].ToString()+"\'"))
+				        {   
+				        /*
+				        update_query = " update IM_ItemAllocation set UD_ItemAllocationNo=\'\' where InventoryReceiptItemId=(select RecId from IM_ReceiptItem IRI with (nolock) ";
+				        update_query +=" left join IM_Receipt R with (nolock) on R.RecId=IRI.InventoryReceiptId where R.RecId=\'"+BaseObject.CurrentRow.Row["RecId"].ToString()+"\' and R.ReceiptType=\'"+BaseObject.CurrentRow.Row["ReceiptType"].ToString()+"\' and IRI.ItemOrderNo=\'"+ri["ItemOrderNo"].ToString()+"\' ";
+				       	MessageBox.Show(update_query.ToString());
+				        
+				        */
+				        
+				        query ="select (ROW_NUMBER() OVER(PARTITION BY IRI.RecId ORDER BY IRI.RecId ASC) ) [sira] ,IA.RecId [ia_rec]";
+				        query += "  from IM_ItemAllocation IA with (nolock) ";
+				        query += "  left join IM_ReceiptItem IRI with (nolock) on IRI.RecId=IA.InventoryReceiptItemId ";
+				        query += "  left join IM_Receipt R with (nolock) on R.RecId=IRI.InventoryReceiptId ";
+				        query += "  where R.RecId=\'"+BaseObject.CurrentRow.Row["RecId"].ToString()+"\' and R.ReceiptType=\'"+BaseObject.CurrentRow.Row["ReceiptType"].ToString()+"\' and IRI.ItemOrderNo=\'"+ri["ItemOrderNo"].ToString()+"\' ";
+				        //	MessageBox.Show(query.ToString());
+				        dt_query_ = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_query_",query);
+		                
+		                if(dt_query_==null || dt_query_.Rows.Count&lt;0)
+		                    return null;
+                    
+				          count_ = Convert.ToInt32(dt_query_.Rows.Count);
+				          sira_ = dt_query_.Rows[0]["sira"].ToString();
+				          ia_rec_ = dt_query_.Rows[0]["ia_rec"].ToString();
+				          
+				          
+		                    for(i=1;i&lt;=count_; i++)
+		                    {
+		                    //	MessageBox.Show(query.ToString());
+		                    //	MessageBox.Show("Count."+count_ +" -- "+sira_ +" -- "+ia_rec_);
+		                    		query2 = " select X.ia_rec [rec] from (";
+		                    		query2 += " select (ROW_NUMBER() OVER(PARTITION BY IRI.RecId ORDER BY IRI.RecId ASC) ) [sira] ,IA.RecId [ia_rec]";
+							        query2 += "  from IM_ItemAllocation IA with (nolock) ";
+							        query2 += "  left join IM_ReceiptItem IRI with (nolock) on IRI.RecId=IA.InventoryReceiptItemId ";
+							        query2 += "  left join IM_Receipt R with (nolock) on R.RecId=IRI.InventoryReceiptId ";
+							        query2 += "  where R.RecId=\'"+BaseObject.CurrentRow.Row["RecId"].ToString()+"\' and R.ReceiptType=\'"+BaseObject.CurrentRow.Row["ReceiptType"].ToString()+"\' and IRI.ItemOrderNo=\'"+ri["ItemOrderNo"].ToString()+"\' ";
+							       query2 += " )X where X.Sira=\'"+i.ToString()+"\'";
+							        //	MessageBox.Show(query2.ToString());
+							        dt_query2_ = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_query2_",query2);
+					                
+					                if(dt_query2_==null || dt_query2_.Rows.Count&lt;0)
+					                    return null;
+                    
+                    
+                    		update_query ="  update IM_ItemAllocation set UD_ItemAllocationNo=( select X.sira from ( select (ROW_NUMBER() OVER(PARTITION BY IRI.RecId ORDER BY IRI.RecId ASC) ) [sira] ";
+                    		update_query +=" ,IA.RecId [ia_rec]  from IM_ItemAllocation IA with (nolock) ";		
+                    		update_query +=" left join IM_ReceiptItem IRI with (nolock) on IRI.RecId=IA.InventoryReceiptItemId  ";		
+                    		update_query +=" left join IM_Receipt R with (nolock) on R.RecId=IRI.InventoryReceiptId   ";		
+                    		update_query +=" where R.RecId=\'"+BaseObject.CurrentRow.Row["RecId"].ToString()+"\' and R.ReceiptType=\'"+BaseObject.CurrentRow.Row["ReceiptType"].ToString()+"\' and IRI.ItemOrderNo=\'"+ri["ItemOrderNo"].ToString()+"\' )X where X.Sira=\'"+i.ToString()+"\'";
+                    		update_query +=" )where RecId=( ";	
+                    		update_query +=" select X.ia_rec [rec] from ( select (ROW_NUMBER() OVER(PARTITION BY IRI.RecId ORDER BY IRI.RecId ASC) ) [sira]";		
+                    		update_query +=" ,IA.RecId [ia_rec]  from IM_ItemAllocation IA with (nolock) ";		
+                    		update_query +=" left join IM_ReceiptItem IRI with (nolock) on IRI.RecId=IA.InventoryReceiptItemId  ";		
+                    		update_query +=" left join IM_Receipt R with (nolock) on R.RecId=IRI.InventoryReceiptId   ";
+                    		update_query +=" where R.RecId=\'"+BaseObject.CurrentRow.Row["RecId"].ToString()+"\' and R.ReceiptType=\'"+BaseObject.CurrentRow.Row["ReceiptType"].ToString()+"\' and IRI.ItemOrderNo=\'"+ri["ItemOrderNo"].ToString()+"\' )X where X.Sira=\'"+i.ToString()+"\')";
+                    	//	MessageBox.Show(update_query.ToString());
+                     dt_update_query_ = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_update_query_",update_query);
+					                
+					                if(dt_update_query_==null || dt_update_query_.Rows.Count&lt;0)
+					                    return null;
+		                    }
+		                    
+				        }
+				        
+		          }
+}
+</ScriptText>
+</ScriptDefinition>

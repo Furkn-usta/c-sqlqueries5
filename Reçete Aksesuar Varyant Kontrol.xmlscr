@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Reçete Aksesuar Varyant Kontrol" Enabled="true" Priority="0" ScriptName="Reçete Aksesuar Varyant Kontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InventoryEN" />
+    <Event Enabled="true" ObjectName="InventoryEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryEN" />
+  </Events>
+  <Histories />
+  <ScriptText>function OnColumnChanged(sender, e)
+{
+	if (BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || BaseObject.CurrentRow.Row.IsNull("InventoryType") || BaseObject.CurrentRow.Row["InventoryType"].ToString()!= "100")
+		return null;
+
+
+	if(BaseObject.Extensions.ContainsKey("InventoryRecipeAccessoryServiceExtension") &amp;&amp; e.Row.Table.TableName == "MA_RecipeItem" &amp;&amp; e.Column.ColumnName == "Variant2" &amp;&amp; (e.Row.IsNull("Variant1") || e.Row["Variant1"].ToString()=="") &amp;&amp; !e.Row.IsNull("Variant2") &amp;&amp; e.Row["Variant2"].ToString() == "Size" &amp;&amp; !e.Row.IsNull("ItemType") &amp;&amp; Convert.ToInt16(e.Row["ItemType"]) == 4)
+	{
+
+		drs = BaseObject.Extensions["InventoryRecipeAccessoryServiceExtension"].RecipeTable.Select("OriginalRowId = " + e.Row["RecId"].ToString());
+		if(drs != null &amp;&amp; drs.Length &gt; 0)
+		{
+			drs[0].SetField&lt;|String|&gt;("Variant1","Genel"); //genel alanina istenen renk kodu yazilacak
+			e.Row.SetField&lt;|String|&gt;("Variant1","Genel"); //genel alanina istenen renk kodu yazilacak
+		}
+	}
+}
+
+function OnBeforePost(sender,eventArg)
+{
+	if (BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || BaseObject.CurrentRow.Row.IsNull("InventoryType") || BaseObject.CurrentRow.Row["InventoryType"].ToString()!= "100")
+		return null;
+
+	  	
+	itemRow = BaseObject.Extensions["InventoryRecipeAccessoryServiceExtension"].RecipeTable.Select("ItemType=4 and Variant1 = \'Size\'"); //BaseObject.Data.Tables["MA_RecipeItem"].Select("ItemType=4 and Variant1 = \'Size\'");
+	if(itemRow!=null &amp;&amp; itemRow.Length&gt;0)
+	{
+		BaseObject.ShowMessage("Aksesuar reçetesi Varyant1 alaninda -Size- seçemezsiniz. (scr : Reçete Aksesuar Varyant Kontrol)");
+		eventArg.Cancel=true;
+		return null;
+	}
+}</ScriptText>
+</ScriptDefinition>

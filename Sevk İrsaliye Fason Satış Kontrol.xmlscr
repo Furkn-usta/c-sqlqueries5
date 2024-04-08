@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Sevk İrsaliye Fason Satiş Kontrol" Enabled="true" Priority="0" ScriptName="Sevk İrsaliye Fason Satiş Kontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 01.04.2017 10:53:51
+function OnBeforePost(sender, eventArg)
+{
+	if (BaseObject!=null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; BaseObject.CurrentRow.Row != null 
+	&amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") &amp;&amp; (Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"]) == 125 
+	|| Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"]) == 120)) 
+	{
+		idStr="0";
+		foreach(iRow in BaseObject.Data.Tables["IM_ReceiptItem"].Select("WorkOrderReceiptItemId is not null"))
+			idStr = idStr + "," + iRow["WorkOrderReceiptItemId"].ToString();
+	
+		dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction,"dt","select isnull(UD_SiparisTuru,\'\') ST from MA_WorkOrder with (nolock) where RecId in (select WI.WorkOrderId from MA_WorkOrderItem WI with (nolock) where WI.RecId in (" +idStr+ ")) and isnull(UD_SiparisTuru,\'\') &lt;&gt; \'\'");
+		
+		if(dt == null &amp;&amp; dt.Rows.Count  &lt;=0)
+			return null;
+		
+		//&amp;&amp; Convert.ToInt16(dt.Rows[0]["ST"]) &gt; 1
+		
+		if(Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"]) == 120 &amp;&amp; dt.Rows[0]["ST"].ToString() == "FASON")
+		{	
+			eventArg.Cancel = true;
+		 	BaseObject.ShowMessage("Sipariş türleri farkli üretim emirleri ayni sevk fişinde kullanilamaz.");
+		 	return null;
+		}
+			if(Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"]) == 125 &amp;&amp; dt.Rows[0]["ST"].ToString() == "SATIŞ")
+		{	
+			eventArg.Cancel = true;
+		 	BaseObject.ShowMessage("Sipariş türleri farkli üretim emirleri ayni sevk fişinde kullanilamaz.");
+		 	return null;
+		}
+		
+	}
+}</ScriptText>
+</ScriptDefinition>

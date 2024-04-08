@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Aksesuar ve kumaş kartindan maliyete özel alan taşima" Enabled="false" Priority="0" ScriptName="ReceteBilgiTasima">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryEN" />
+  </Events>
+  <Histories />
+  <ScriptText>/*
+Tarih: 28.10.2021
+Talep Eden : Selcan Kaya - Flomak Tekstil
+
+Kumaş kartlarinda girilmiş olan â€œKumaş İçerikâ€  özel alanlarindaki bilgileri maliyete aktarir.
+*/
+
+function OnBeforePost(sender, ev)
+{
+	if( BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null )
+		return null;
+
+	if( BaseObject.CurrentRow.Row.IsNull("InventoryType") || Convert.ToInt32(BaseObject.CurrentRow.Row["InventoryType"]) != 100 )
+		return null;
+	
+	foreach(ri in BaseObject.Data.Tables["MA_InitialCostItem"].Select("InventoryId is not null"))
+	{
+	
+	
+		q="SELECT UD_Kum FROM IM_Item WHERE RecId=" + ri["InventoryId"].ToString();
+		r=UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "r",q);
+	
+		if(r == null || r.Rows.Count &lt;= 0)
+			return null;
+		
+		if(!r.Rows[0].IsNull("UD_Kum"))
+			ri.SetField&lt;|string|&gt;("UD_Kum", r.Rows[0]["UD_Kum"].ToString());
+
+	}
+}</ScriptText>
+</ScriptDefinition>

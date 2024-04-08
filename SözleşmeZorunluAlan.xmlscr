@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SözleşmeZorunluAlan" Enabled="true" Priority="0" ScriptName="SözleşmeZorunluAlan">
+  <Events>
+    <Event Enabled="true" ObjectName="TWorkOrderEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="TWorkOrderEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 2.11.2023 14:21:45  
+
+function OnBeforePost(sender,ev)
+{
+	if(BaseObject == null 
+    || BaseObject.CurrentRow == null
+    || BaseObject.CurrentRow.Row == null
+   /* || BaseObject.CurrentRow.Row.IsNull("WorkOrderType")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["WorkOrderType"]) != 15*/
+    )
+	    return null;
+	
+	order_no = BaseObject.CurrentRow.Row["WorkOrderNo"].ToString();
+    order_no = order_no.ToString().Substring(0,1);
+    
+    if(order_no.ToString() == 3 || order_no.ToString() == 4 || order_no.ToString() == 5 || order_no.ToString() == 6)
+    {
+       // MessageBox.Show(BaseObject.CurrentRow.Row["UD_UrunOrg"].ToString().Trim());
+    	if(BaseObject.CurrentRow.Row.IsNull("UD_UrunOrg") || BaseObject.CurrentRow.Row["UD_UrunOrg"].ToString().Trim() == "")
+    	{
+    		sender.ShowMessage("Lütfen Ürün sertifikali mi ? alanini doldurunuz. {scr:SözleşmeZorunluAlan}");
+    		ev.Cancel = true;
+    		return null;
+    	}
+    
+    	
+    	if(BaseObject.CurrentRow.Row["UD_UrunOrg"].ToString().Trim() == "E")
+    	{
+
+            if(BaseObject.CurrentRow.Row.IsNull("UD_OrgTuru") || BaseObject.CurrentRow.Row["UD_OrgTuru"].ToString().Trim() == "")
+    	{
+    		sender.ShowMessage("Lütfen Sertifika Türünü Seçiniz. {scr:SözleşmeZorunluAlan}");
+    		ev.Cancel = true;
+    		return null;
+    	}
+    	}
+    	
+    }
+}</ScriptText>
+</ScriptDefinition>

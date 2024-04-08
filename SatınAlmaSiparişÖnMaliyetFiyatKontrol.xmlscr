@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSiparişÖnMaliyetFiyatKontrol" Enabled="true" Priority="0" ScriptName="SatınAlmaSiparişÖnMaliyetFiyatKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="Furkan Usta" EntryDate="2023-08-04T00:00:00">
+      <Change>Satın Alma Siparişlerinde(1) tahsisteki orderin bağlı olduğu ön maliyetteki malzemelerin fiyatı ile satırdaki malzemelerin fiyatları eşleşmiyorsa sipariş onaysıza çekilip ön maliyet kilitlenecektir. 
+</Change>
+    </History>
+  </Histories>
+  <ScriptText>//Generated on 4.08.2023 12:00:26
+/*
+Satın Alma Siparişlerinde(1) tahsisteki orderin bağlı olduğu ön maliyetteki malzemelerin fiyatı ile satırdaki malzemelerin fiyatları eşleşmiyorsa sipariş onaysıza çekilip ön maliyet kilitlenecektir. 
+*/
+gLock = false;
+init_rec_ = 0;
+function OnBeforePost(sender,ev)
+{
+    if (BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+    		return null;
+
+      foreach(ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("OrderReceiptItemId is not null and InventoryId is not null")) 
+          {
+            foreach(ori in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("InventoryId is not null and UnitPrice is not null")) 
+                {
+                  if(ia["InventoryId"].ToString().Trim() == ori["InventoryId"].ToString().Trim())
+                  {
+                  l_sb = new StringBuilder();
+                  l_sb.Clear();
+                  l_sb.AppendLine(" select top 1 isnull(ICI.UnitPrice,0) [init_unit_price],isnull(IC.RecId,0) [init_rec] from MA_WorkOrder WO with (nolock) ");
+                  l_sb.AppendLine(" left join MA_WorkOrderItem WOI with (nolock) on WO.RecId=WOI.WorkOrderId");
+                  l_sb.AppendLine(" left join MA_InitialCost IC with (nolock) on IC.RecId=WO.InitialCostId");
+                  l_sb.AppendLine(" left join MA_InitialCostItem ICI with (nolock) on IC.RecId=ICI.InitialCostId");
+                  l_sb.AppendLine(" where WOI.RecId=\'"+ia["WorkOrderItemId"].ToString()+"\' and ICI.InventoryId=\'"+ori["InventoryId"].ToString()+"\'");
+                  l_sb.AppendLine(" group by ICI.UnitPrice,IC.RecId");
+                  l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt",l_sb.ToString());
+                  
+                  if(l_dt == null || l_dt.Rows.Count &lt;=0)
+           	        return null;
+                 
+                  init_unit_price_ = Convert.ToDecimal(l_dt.Rows[0]["init_unit_price"]);
+                  item_unit_price_ = Convert.ToDecimal(ori["UnitPrice"]);
+                  global:init_rec_ = Convert.ToInt32(l_dt.Rows[0]["init_rec"]);  
+                                  
+	                      if(init_unit_price_ != item_unit_price_)
+	                      {    
+	                          BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved",0);
+	                          global:gLock=true;
+	                          OnAfterSucceededPost(global:gLock);
+	                          sender.ShowMessage(ori["ItemOrderNo"].ToString() + ". Satırın Ön Maliyet Fiyatı İle Satır Fiyatı Uyuşmadığı İçin Ön Maliyet Kilitlendi.. scr{SatınAlmaSiparişÖnMaliyetFiyatKontrol}");
+									 return null;	                       
+	                      }                      
+                      }
+                }          
+        }         
+}
+
+  function OnAfterSucceededPost(lock)
+  {    
+      if(lock!=false)
+      {
+      		if(global:init_rec_ != 0)
+      		{
+	          update_query ="update MA_InitialCost set IsLocked=1 where RecId="+Convert.ToInt32(global:init_rec_);
+			  update_query_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "update_query_dt",update_query.ToString());
+	          if(l_dt == null || l_dt.Rows.Count &lt;=0)
+	           	        return null;    
+	        }
+      }
+  }
+</ScriptText>
+</ScriptDefinition>

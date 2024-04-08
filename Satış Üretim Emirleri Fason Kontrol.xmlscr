@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Satiş Üretim Emri Fason Kontrol" Enabled="true" Priority="0" ScriptName="Satiş Üretim Emirleri Fason Kontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 01.06.2017 14:51:50	Satiş Üretim Emirleri Fason Kontrol	Satiş Üretim Emri Fason Kontrol	0	False
+function OnBeforePost(sender, eventArg)
+{
+	if (BaseObject!=null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; BaseObject.CurrentRow.Row != null 
+	&amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") &amp;&amp; Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"]) == 125) 
+	{
+		idStr="0";
+		foreach(iRow in BaseObject.Data.Tables["IM_ReceiptItem"].Select("WorkOrderReceiptItemId is not null"))
+			idStr = idStr + "," + iRow["WorkOrderReceiptItemId"].ToString();
+	
+		dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction,"dt","select RecId from MA_WorkOrder with (nolock) where RecId in (select WI.WorkOrderId from MA_WorkOrderItem WI with (nolock) where WI.RecId in (" +idStr+ ")) and isnull(UD_SiparisTuru,\'\') = \'SATIŞ\'");
+		if(dt != null &amp;&amp; dt.Rows.Count &gt; 0)
+		{	
+			eventArg.Cancel = true;
+		 	BaseObject.ShowMessage("Fason fişinde sipariş türü satiş olan üretim emri kullanilamaz.");
+		 	return null;
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

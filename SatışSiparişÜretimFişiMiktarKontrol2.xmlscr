@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatışSiparişÜretimFişiMiktarKontrol2" Enabled="true" Priority="0" ScriptName="SatışSiparişÜretimFişiMiktarKontrol2">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="AfterPost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 3.11.2023 14:53:49 SatışSiparişÜretimFişiMiktarKontrol2
+function OnBeforePost(sender,e)
+{
+	if (BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null)
+			return null;
+			
+	if (BaseObject.CurrentRow.Row.IsNull("ReceiptType") || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 10)
+			return null;
+			
+	if(BaseObject.IsNewRecord)		
+		return null;
+		
+		l_sb = new StringBuilder();		
+	
+	foreach(iri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("InventoryId is not null and UD_Sayac is not null and Quantity is not null")) 
+ 		{
+ 		   l_sb.Clear();
+           l_sb.AppendLine("select isnull(ORI.Quantity,0) [qua] ,ORI.RecId [rec_id] ,isnull(UD_ProductionQuantity,0) [gelen] from IM_OrderReceiptItem ORI with (nolock) where ORI.ReceiptType=2 and ORI.UD_Sayac=\'"+Convert.ToInt32(iri["UD_Sayac"])+"\'");
+         //	MessageBox.Show(l_sb.ToString());
+           l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt",l_sb.ToString());
+           
+           if(l_dt == null || l_dt.Rows.Count &lt;= 0)
+           		return null;
+           	
+           quantity_ = Convert.ToDecimal(l_dt.Rows[0]["qua"]);
+           gelen_ = Convert.ToDecimal(l_dt.Rows[0]["gelen"]);
+ 		   rec_id_ = l_dt.Rows[0]["rec_id"].ToString(); 		   
+           top_mik_ = Convert.ToDecimal(iri["Quantity"]);
+           /*
+           if(quantity_ &gt;= top_mik_)
+           {
+           	status_ = 1;
+           }
+           */
+           if(gelen_+top_mik_&gt;=quantity_)
+           {
+             	status_ = 1;
+           }
+           else
+           {
+           	status_ = 0;
+           }
+           
+           update_order_receipt(rec_id_,top_mik_,status_); //UD_ProductionQuantity
+           
+ 		}
+}
+
+function update_order_receipt(row_rec,special_area,is_closed)
+{
+	query = "update IM_OrderReceiptItem set IsClosed=\'"+is_closed.ToString()+"\' ,UD_ProductionQuantity =	"+Convert.ToInt32(top_mik_)+"+isnull(UD_ProductionQuantity,0) where ReceiptType=2 and RecId = \'"+row_rec.ToString()+"\'";
+//	MessageBox.Show(query.ToString());
+/*	*/
+		dt=UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+        if(dt == null || dt.Rows.Count &lt;= 0)
+			    return null; 
+
+}</ScriptText>
+</ScriptDefinition>

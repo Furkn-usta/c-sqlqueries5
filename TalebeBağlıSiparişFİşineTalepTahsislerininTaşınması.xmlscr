@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TalebeBağliSiparişFişineTalepTahsislerininTaşinmasi" Enabled="true" Priority="0" ScriptName="TalebeBağliSiparişFİşineTalepTahsislerininTaşinmasi">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 22.02.2022 16:14:26
+function OnBeforePost(sender, eventArg)
+{
+  if(BaseObject != null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; BaseObject.CurrentRow.Row != null)
+    {
+      foreach(r in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("DemandReceiptItemId is not null and isnull(Quantity,0)&gt;0"))
+         {
+          if(r.RowState != DataRowState.Added)
+                continue;
+          dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt","select * from IM_ItemAllocation with (nolock) where DemandReceiptItemId = "+r["DemandReceiptItemId"].ToString());
+          if(dt != null &amp;&amp; dt.Rows.Count &gt; 0)
+            {
+               l_allocationQuantity = (decimal)0; 
+               l_allocationRowCount = 0;
+                                                               
+                foreach(itemAllocationRow in dt.Rows)
+                {
+                  l_allocation_new_row = BaseObject.Data.Tables["IM_ItemAllocation"].NewRow();
+                  l_allocation_new_row.SetParentRow(r);           
+                  BaseObject.Data.Tables["IM_ItemAllocation"].Rows.Add(l_allocation_new_row);
+                  l_allocation_new_row.SetField&lt;|int|&gt;("OrderReceiptType",Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]));               
+                  l_allocation_new_row.SetField&lt;|int|&gt;("InventoryReceiptSubType",Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptSubType"]));                
+                  l_allocation_new_row.SetField&lt;|long|&gt;("InventoryId",Convert.ToInt64(itemAllocationRow["InventoryId"]));   
+                  if(!itemAllocationRow.IsNull("InventoryVariantId"))             
+                  	l_allocation_new_row.SetField&lt;|long|&gt;("InventoryVariantId",Convert.ToInt64(itemAllocationRow["InventoryVariantId"]));                 
+                  l_allocation_new_row.SetField&lt;|decimal|&gt;("Quantity",Convert.ToDecimal(itemAllocationRow["Quantity"]));                             
+                  l_allocation_new_row.SetField&lt;|int|&gt;("OperationType",Convert.ToInt32(itemAllocationRow["OperationType"]));
+                  l_allocation_new_row.SetField&lt;|string|&gt;("RequirementGroup",itemAllocationRow["RequirementGroup"].ToString());
+                  l_allocation_new_row.SetField&lt;|long|&gt;("WorkOrderItemId",Convert.ToInt64(itemAllocationRow["WorkOrderItemId"]));
+
+                   if(!itemAllocationRow.IsNull("Quantity"))
+                       l_allocationQuantity += Convert.ToDecimal(itemAllocationRow["Quantity"]);
+                   l_allocationRowCount++;
+                }                
+                //alt bölüm duruma göre aktif edilecek
+                /*
+                //tek tahsis satiri var ve tahsis miktari satir miktarindan büyük değilse miktar düzenlenmeye gerek yok
+                l_allocationControl = !(l_allocationRowCount == 1 &amp;&amp; l_itemQuantity &gt;= l_allocationQuantity);
+                if (l_allocationControl &amp;&amp; l_itemQuantity &lt; l_allocationQuantity)
+                {
+                    (BaseObject.Extensions["InventoryAllocationControlExplanationExtension"] as InventoryAllocationControlExplanationExtension).fp_receiptTransferTransaction = true;
+
+                    //tahsis miktarlari düzenleniyor
+                    if (!r.IsNull("GrossQuantity") &amp;&amp; Convert.ToDecimal(r["GrossQuantity"])&gt;0)
+                        r["GrossQuantity"] = r["GrossQuantity"];
+                    r["Quantity"] = r["Quantity"];
+
+                    (BaseObject.Extensions["InventoryAllocationControlExplanationExtension"] as InventoryAllocationControlExplanationExtension).fp_receiptTransferTransaction = false;
+                }
+                */
+            }
+         }
+    }
+}
+</ScriptText>
+</ScriptDefinition>

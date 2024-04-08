@@ -1,0 +1,167 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TaxRateControl" Enabled="false" Priority="0" ScriptName="TaxRateControl">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InvoiceEN" />
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" ObjectName="DemandReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="DemandReceiptEN" />
+    <Event Enabled="true" ObjectName="QuotationReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="QuotationReceiptEN" />
+    <Event Enabled="true" ObjectName="ContractEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="ContractEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 7.07.2023 14:12:13
+function OnBeforePost(sender,eventArg)
+{
+      if(eventArg.Cancel)
+        return null;
+        
+      if(BaseObject != null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; BaseObject.CurrentRow.Row != null)
+      {
+         l_date = new DateTime(2023,7,10);
+   
+         l_table_name = "IM_ReceiptItem";
+         if(BaseObject.Name == "OrderReceiptEN")
+            l_table_name = "IM_OrderReceiptItem";
+         if(BaseObject.Name == "DemandReceiptEN")
+            l_table_name = "IM_DemandReceiptItem";
+         if(BaseObject.Name == "QuotationReceiptEN")
+            l_table_name = "IM_QuotationReceiptItem";
+         if(BaseObject.Name == "ContractEN")
+            l_table_name = "SM_ContractItem";
+         
+         //İade ise seçilen ana kaydin tarihine bakilacak
+         if((BaseObject.Name == "InvoiceEN" || BaseObject.Name == "InventoryReceiptEN") &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType"))
+         {
+            if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 122 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 139)
+            {
+              foreach(l_row in BaseObject.Data.Tables[l_table_name].Select("ReturnReceiptItemId is not null"))
+              {
+                  if(l_row.RowState == DataRowState.Deleted || l_row.RowState == DataRowState.Detached)
+                     continue;
+                     
+                  l_str = "select ReceiptDate from IM_ReceiptItem with (nolock) where RecId = " + Convert.ToInt32(l_row["ReturnReceiptItemId"]); 
+                  l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider,BaseObject.Connection,BaseObject.Transaction,"l_dt",l_str);
+                  if(l_dt != null &amp;&amp; l_dt.Rows.Count &gt; 0)
+                  {
+                       if(Convert.ToDateTime(l_dt.Rows[0]["ReceiptDate"]) &lt; l_date)
+                       {
+                         if(Convert.ToDecimal(l_row["VatRate"]) == 10 || Convert.ToDecimal(l_row["VatRate"]) == 20)
+                         {
+                           BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                           eventArg.Cancel = true;
+                           return null;
+                         }
+                       
+                       }
+                       else
+                       {
+                         if(Convert.ToDecimal(l_row["VatRate"]) == 8 || Convert.ToDecimal(l_row["VatRate"]) == 18)
+                         {
+                           BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                           eventArg.Cancel = true;
+                           return null;
+                         }
+                       }   
+                  }
+               }
+             }
+             else if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 126 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 7)
+            {
+              foreach(l_row in BaseObject.Data.Tables[l_table_name].Select("PurchaseReceiptItemId is not null"))
+              {
+                  if(l_row.RowState == DataRowState.Deleted || l_row.RowState == DataRowState.Detached)
+                     continue;
+                     
+                  l_str = "select ReceiptDate from IM_ReceiptItem with (nolock) where RecId = " + Convert.ToInt32(l_row["PurchaseReceiptItemId"]); 
+                  l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider,BaseObject.Connection,BaseObject.Transaction,"l_dt",l_str);
+                  if(l_dt != null &amp;&amp; l_dt.Rows.Count &gt; 0)
+                  {
+                       if(Convert.ToDateTime(l_dt.Rows[0]["ReceiptDate"]) &lt; l_date)
+                       {
+                         if(Convert.ToDecimal(l_row["VatRate"]) == 10 || Convert.ToDecimal(l_row["VatRate"]) == 20)
+                         {
+                           BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                           eventArg.Cancel = true;
+                           return null;
+                         }
+                       
+                       }
+                       else
+                       {
+                         if(Convert.ToDecimal(l_row["VatRate"]) == 8 || Convert.ToDecimal(l_row["VatRate"]) == 18)
+                         {
+                           BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                           eventArg.Cancel = true;
+                           return null;
+                         }
+                       }   
+                  }
+               }
+             }
+             else
+             {
+               foreach(l_row in BaseObject.Data.Tables[l_table_name].Select("isnull(VatRate,0) &gt; 0"))   
+               {
+                   if(l_row.RowState == DataRowState.Deleted || l_row.RowState == DataRowState.Detached)
+                      continue;
+                   
+                       if(Convert.ToDateTime(BaseObject.CurrentRow.Row["ReceiptDate"]) &lt; l_date)
+                       {
+                         if(Convert.ToDecimal(l_row["VatRate"]) == 10 || Convert.ToDecimal(l_row["VatRate"]) == 20)
+                         {
+                           BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                           eventArg.Cancel = true;
+                           return null;
+                         }
+                       
+                       }
+                       else
+                       {
+                         if(Convert.ToDecimal(l_row["VatRate"]) == 8 || Convert.ToDecimal(l_row["VatRate"]) == 18)
+                         {
+                           BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                           eventArg.Cancel = true;
+                           return null;
+                         }
+                       } 
+                   }  
+             }
+         }
+         else
+         {   
+         
+           
+             foreach(l_row in BaseObject.Data.Tables[l_table_name].Select("isnull(VatRate,0) &gt; 0"))   
+             {
+               if(l_row.RowState == DataRowState.Deleted || l_row.RowState == DataRowState.Detached)
+                  continue;
+           
+                if(Convert.ToDateTime(BaseObject.CurrentRow.Row["ReceiptDate"]) &lt; l_date)
+                {
+                  if(Convert.ToDecimal(l_row["VatRate"]) == 10 || Convert.ToDecimal(l_row["VatRate"]) == 20)
+                  {
+                    BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                    eventArg.Cancel = true;
+                    return null;
+                  }
+                }
+                else
+                {
+                  if(Convert.ToDecimal(l_row["VatRate"]) == 8 || Convert.ToDecimal(l_row["VatRate"]) == 18)
+                  {
+                    BaseObject.ShowMessage("KDV Oraniniz yeni yönetmeliğe uymamaktadir lütfen kontrol ediniz. (scr : TaxRateControl)");
+                    eventArg.Cancel = true;
+                    return null;
+                  }
+                }
+             }
+         }
+      }
+}</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TestCPdeneme" Enabled="true" Priority="0" ScriptName="TestCPdeneme">
+  <Events>
+    <Event Enabled="true" ObjectName="CustomerTransactionEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="CustomerTransactionEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 12.03.2024 14:17:45 TestCPdeneme
+function OnBeforePost(sender,eventArg)
+{
+    if(BaseObject == null
+    || BaseObject.CurrentRow == null
+    || BaseObject.CurrentRow.Row == null)
+        return null;
+	sender.ShowMessage("test");
+}</ScriptText>
+</ScriptDefinition>

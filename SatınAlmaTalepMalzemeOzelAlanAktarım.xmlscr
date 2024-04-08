@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaTalepMalzemeOzelAlanAktarım" Enabled="true" Priority="0" ScriptName="SatınAlmaTalepMalzemeOzelAlanAktarım">
+  <Events>
+    <Event Enabled="true" ObjectName="DemandReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="DemandReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 17.11.2023 13:19:43 SatınAlmaTalepMalzemeOzelAlanAktarım
+function OnColumnChanged(sender, e)
+{   	
+    if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null 
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+	|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1 ) 
+		return null;
+	
+		if(e.Row.Table.TableName == "IM_DemandReceiptItem" &amp;&amp; e.Column.ColumnName == "InventoryId")
+	   {
+	    str="select I.UD_Olcu [sp_] from IM_Item I with (nolock) where isnull(I.RecId,0) =\'"+e.Row["InventoryId"].ToString()+"\'";
+	    dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);	
+	    //MessageBox.Show(str);
+	    if(dt == null || dt.Rows.Count&lt;=0)
+	    	return null;
+	    sp_ = dt.Rows[0]["sp_"].ToString();
+	       
+	   	e.Row.SetField&lt;|string|&gt;("Explanation",sp_.ToString());
+	    
+	    	
+	   }
+	
+	
+}</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisOrderNumuneDepoKontrol" Enabled="true" Priority="0" ScriptName="TahsisOrderNumuneDepoKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 1.04.2024 13:51:30 TahsisOrderNumuneDepoKontrol
+/*
+İrsaliyenin Tahsis Bağlantısı Mevcut Değişse Çalışmayacaktır. 17 fiş tipinde çalışmayacaktır. Eğer Numune Order ise sadece 64 recIdli depoya giriş çıkış yapılabilir. Numune Değilse sadece 51 recIdli depoya giriş çıkış yapılabilir.
+*/
+function OnBeforePost(sender,ev)
+{
+    if(BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 17
+     )
+        return null;
+
+             foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select(""))
+			{
+			  rows = dr.GetChildRows("FK_IM_ItemAllocation_IM_ReceiptItem");
+			  
+			  if(rows==null ||rows.Length&lt;=0 &amp;&amp; (BaseObject.CurrentRow.Row.IsNull("RecId") || string.IsNullOrEmpty(BaseObject.CurrentRow.Row["RecId"])))
+			  {
+			     return null;
+			  }			  
+			}
+
+    depo_rec = 0;
+
+    if(BaseObject.CurrentRow.Row.IsNull("InWarehouseId"))
+        depo_rec = Convert.ToInt32(BaseObject.CurrentRow.Row["OutWarehouseId"]);
+    else if(BaseObject.CurrentRow.Row.IsNull("OutWarehouseId"))
+        depo_rec = Convert.ToInt32(BaseObject.CurrentRow.Row["InWarehouseId"]);
+
+   	foreach(ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("")) 
+                {
+                    
+                query = " select isnull(WO.WorkOrderNo,\'\') [order] , ISNULL(WO.IsSample,0) [numune_durumu] from MA_WorkOrderItem WOI with (nolock) ";
+                query += " left join MA_WorkOrder WO with (nolock) on WO.RecId=WOI.WorkOrderId";
+                query += " where isnull(WOI.RecId,\'\') = \'"+ia["WorkOrderItemId"].ToString()+"\'";
+
+               // MessageBox.Show(query);
+                
+                dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+                if(dt !=null &amp;&amp; dt.Rows.Count&gt;0 )
+                    {
+                        if(dt.Rows[0]["numune_durumu"].ToString().Trim() == "1")
+                           {
+                            if(Convert.ToInt32(depo_rec) != 64)//64
+                            {
+                                sender.ShowMessage("Numune Orderlarında Sadece EDİRNE NUMUNE KUMAŞ DEPO seçilebilir.");
+                                ev.Cancel = true;
+                                return null;
+                            }
+                           }
+                        
+                        if(dt.Rows[0]["numune_durumu"].ToString().Trim() == "0")
+                           {
+                            if(Convert.ToInt32(depo_rec) != 51)//51
+                            {
+                                sender.ShowMessage("Orderlarda Sadece EDİRNE KUMAŞ DEPO seçilebilir.");
+                                ev.Cancel = true;
+                                return null;
+                            }
+                           }
+                    }
+                }
+}</ScriptText>
+</ScriptDefinition>

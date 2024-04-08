@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="ReçeteDetayMiktar" Enabled="false" Priority="0" ScriptName="ReçeteDetayMiktar">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InventoryEN" />
+  </Events>
+  <Histories />
+  <ScriptText>function OnColumnChanged(sender, eventArg){
+	if (BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || BaseObject.IsNewRecord || BaseObject.IsCopyEntity)
+		return null;
+			
+	if (eventArg.Row.Table.TableName == "MA_RecipeItem" &amp;&amp;   eventArg.Column.ColumnName == "Quantity" &amp;&amp;  BaseObject.ActiveSession.User.RecId != 1034){
+		if(!eventArg.Row.IsNull("Quantity") || eventArg.Row["Quantity"]!=0){
+		    //BaseObject.ShowMessage("Miktar değiştirme yetkiniz yoktur. {src:ReçeteDetayMiktar}");
+			BaseObject.CurrentRow.Row.SetColumnError("InventoryCode", "Miktar değiştirme yetkiniz yoktur. {src:ReçeteDetayMiktar}");
+			//eventArg.Cancel=true;
+			return null;
+		}
+     }
+ }
+</ScriptText>
+</ScriptDefinition>

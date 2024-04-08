@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TevkifatOtomatikAtama" Enabled="true" Priority="0" ScriptName="TevkifatOtomatikAtama">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="InventoryReceiptVM" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 31.10.2023 12:01:54 TevkifatOtomatikAtama 
+/*
+11 fason alınan giriş irsaliyesinde alt tipi 1 ve 5 olan irsaliyede tevkifat tipini 7 / 10 olarak getirmektedir.
+*/
+function OnViewLoaded(sender, e)
+{
+    	if(BaseObject.ActiveEntity == null 
+            || BaseObject.ActiveEntity.CurrentRow == null 
+            || BaseObject.ActiveEntity.CurrentRow.Row == null
+            || BaseObject.ActiveEntity.CurrentRow.Row.IsNull("ReceiptType")
+            || BaseObject.ActiveEntity.CurrentRow.Row.IsNull("ReceiptSubType")
+             || BaseObject.ActiveEntity.CurrentRow.Row.IsNull("UD_WitholdingControl")
+            || Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["UD_WitholdingControl"]) == 1
+            || Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptType"]) != 11
+        )
+            return null;
+		if(Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptSubType"]) == 1 || Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptSubType"]) == 5)	
+        	{
+        	 BaseObject.ActiveEntity.CurrentRow.Row.SetField&lt;|int|&gt;("WithholdingFactor",7); //sol
+       		 BaseObject.ActiveEntity.CurrentRow.Row.SetField&lt;|int|&gt;("WithholdingDivisor",10); //sağ            
+		    }
+}	
+
+
+function OnBeforePost(sender,ev)
+{
+    if(BaseObject == null 
+            || BaseObject.CurrentRow == null 
+            || BaseObject.CurrentRow.Row == null
+            || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+            || BaseObject.CurrentRow.Row.IsNull("ReceiptSubType")
+            || BaseObject.CurrentRow.Row.IsNull("UD_WitholdingControl")
+            || Convert.ToInt32(BaseObject.CurrentRow.Row["UD_WitholdingControl"]) == 1
+            || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 11
+        )
+            return null;
+            if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptSubType"]) == 1 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptSubType"]) == 5)	
+        	{
+	        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_WitholdingControl",1);
+	         }
+            
+}</ScriptText>
+</ScriptDefinition>

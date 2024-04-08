@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SagTıkEngel" Enabled="true" Priority="0" ScriptName="SagTıkEngel">
+  <Events>
+    <Event Enabled="true" ObjectName="TWorkOrderProductionVM" />
+    <Event Enabled="true" EventName="BeforeCommandExecution" FunctionName="OnBeforeCommandExecution" ObjectName="TWorkOrderProductionVM" />
+    <Event Enabled="true" ObjectName="TWorkOrderVM" />
+    <Event Enabled="true" EventName="BeforeCommandExecution" FunctionName="OnTBeforeCommandExecution" ObjectName="TWorkOrderVM" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 19.07.2023 17:26:59  	/*TEST TEST*/
+function OnBeforeCommandExecution(sender, cmd)
+{
+	/*	*/
+	if(BaseObject.ActiveSession.User.RecId == 1 || BaseObject.ActiveSession.User.RecId ==129)
+		return null;
+
+	cn_ = cmd.CommandName;
+	
+	
+	/*
+	if(BaseObject != null 
+	&amp;&amp; BaseObject.ActiveEntity != null 
+	&amp;&amp; BaseObject.ActiveEntity.CurrentRow != null 
+	&amp;&amp; BaseObject.ActiveEntity.CurrentRow.Row != null
+	&amp;&amp; !BaseObject.ActiveEntity.Data.Tables.Contains("MA_WorkOrderProduction"))
+	*/
+		
+	if(cn_.ToString() == "FactoryTotalProductionColorCommand" 
+	|| cn_.ToString() == "ColorTotalProductionCommand" 
+	|| cn_.ToString() == "FactoryTotalProductionCommand")
+ 	{
+ 		
+		cmd.Cancel = true;
+		return null;
+	}
+
+
+}
+
+
+
+function OnTBeforeCommandExecution(sender, cmd)
+{
+	
+	if(BaseObject.ActiveEntity == null 
+	|| BaseObject.ActiveEntity.CurrentRow == null 
+	|| BaseObject.ActiveEntity.CurrentRow.Row == null)
+		return null;
+		sender.ActiveEntity.ShowMessage(cmd.CommandName);
+		
+	if(cmd.CommandName == "FactoryTotalProductionColorCommand" 
+	|| cmd.CommandName == "ColorTotalProductionCommand" 
+	|| cmd.CommandName == "FactoryTotalProductionCommand")
+ 			sender.ActiveEntity.ShowMessage("test");
+		
+	if(cmd.CommandName == "PostDataCommand")
+	{
+		cmd.Cancel = true;
+		return null;
+	}
+	if(cmd.CommandName == "TWorkOrderFormPrintCommand")
+	{
+		cmd.Cancel = true;
+		return null;
+	}
+ 
+
+}
+
+</ScriptText>
+</ScriptDefinition>

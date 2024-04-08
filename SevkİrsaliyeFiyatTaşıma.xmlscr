@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SevkİrsaliyeFiyatTaşima" Enabled="true" Priority="0" ScriptName="SevkİrsaliyeFiyatTaşima">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>function OnBeforePost(seneder,eventArg){
+    if(BaseObject != null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; BaseObject.CurrentRow.Row != null &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") &amp;&amp; ( BaseObject.CurrentRow.Row["ReceiptType"].ToString()=="120" ||  BaseObject.CurrentRow.Row["ReceiptType"].ToString()=="125" )){
+        foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select(" InventoryId is not null and isnull(WorkOrderReceiptItemId,0)&lt;&gt;0 ")){
+            if(dr.RowState!=DataRowState.Deleted){
+                str = "select isnull(WOI.ForexId,0) Forex,isnull(WOI.UnitPrice,0) Price from MA_WorkOrderItem WOI with (nolock) where WOI.WorkOrderSubType=1 and WOI.InventoryId="+dr["InventoryId"].ToString()+" and WOI.RecId="+dr["WorkOrderReceiptItemId"].ToString();
+                dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);	
+				if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 &amp;&amp; !dt.Rows[0].IsNull("Price") &amp;&amp; Convert.ToInt32(dt.Rows[0]["Forex"])==0  )
+				    dr.SetField&lt;|decimal|&gt;("UnitPrice",Convert.ToDecimal(dt.Rows[0]["Price"]));
+				else if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 &amp;&amp; !dt.Rows[0].IsNull("Price") &amp;&amp; Convert.ToInt32(dt.Rows[0]["Forex"])&gt;0  ){
+				    dr.SetField&lt;|decimal|&gt;("ForexUnitPrice",Convert.ToDecimal(dt.Rows[0]["Price"]));
+				    dr.SetField&lt;|int|&gt;("ForexId",Convert.ToInt32(dt.Rows[0]["Forex"]));
+		        }
+		    }
+	    }
+    }
+} </ScriptText>
+</ScriptDefinition>

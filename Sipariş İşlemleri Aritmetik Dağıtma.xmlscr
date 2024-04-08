@@ -1,0 +1,424 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparisIslemleri" Enabled="true" Priority="0" ScriptName="SiparisIslemleri">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="OrderReceiptVM" />
+    <Event Enabled="true" ObjectName="InventoryReceiptVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="InventoryReceiptVM" />
+    <Event Enabled="true" ObjectName="InvoiceVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="InvoiceVM" />
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories />
+  <ScriptText>RuntimeHost.SetSettingItem("UnsubscribeAllEvents", false);
+
+function ValidateEntity()
+{
+	
+    if(BaseObject == null 
+    || BaseObject.ActiveEntity == null 
+    || BaseObject.ActiveEntity.Data == null 
+	|| BaseObject.ActiveEntity.Data.Tables == null 
+	|| BaseObject.ActiveEntity.CurrentRow.Row.IsNull("ReceiptType")
+	//|| (Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptType"])!=11 &amp;&amp; (Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptSubType"])!=2)
+    || (!BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem") &amp;&amp; !BaseObject.ActiveEntity.Data.Tables.Contains("IM_ReceiptItem")))
+		return String.Empty;
+    
+	tableName = "IM_ReceiptItem";
+	if(BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem"))
+		tableName = "IM_OrderReceiptItem";
+	return tableName;
+}
+
+
+function OnQtyButtonsClick(sender, ev)
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	tDataTable	= BaseObject.ActiveEntity.Data.Tables[tableName];
+	txtQuantity = BaseObject.FindControl("txtQuantity");
+	
+	if(txtQuantity == null)
+		return null;
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+		return null;
+	
+	sum_qty = tDataTable.Compute("SUM(GrossQuantity)",filter);
+	
+	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select(filter))
+	{
+		baseQty = 0m;			
+		if(!ri.IsNull("GrossQuantity"))
+			baseQty = Convert.ToDecimal(ri["GrossQuantity"]);	
+		if(sender.Name.Contains("Up"))
+			ri.SetField&lt;|decimal|&gt;("GrossQuantity", Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Inc"))
+			ri.SetField&lt;|decimal|&gt;("GrossQuantity", baseQty + Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Dec") &amp;&amp; (baseQty - Convert.ToDecimal(txtQuantity.Value)) &gt; 0m)
+			ri.SetField&lt;|decimal|&gt;("GrossQuantity", baseQty - Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Remove"))
+			ri.Delete();
+
+		input_quantity = Convert.ToDecimal(txtQuantity.Value);
+
+		if(sum_qty&lt;=0)
+		return null;
+
+		calculated_arithmetic_quantity = input_quantity/sum_qty*baseQty;
+
+		 if(sender.Name.Contains("Arithmetic") &amp;&amp; (Convert.ToDecimal(calculated_arithmetic_quantity)) &gt; 0m)
+			ri.SetField&lt;|decimal|&gt;("GrossQuantity", Convert.ToDecimal(baseQty)+Convert.ToDecimal(calculated_arithmetic_quantity));
+		
+
+	}
+		updateSum();
+}
+function OnNetQtyButtonsClick(sender, ev)
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	tDataTable	= BaseObject.ActiveEntity.Data.Tables[tableName];
+	txtQuantity = BaseObject.FindControl("txtQuantity");
+	
+	if(txtQuantity == null)
+		return null;
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+		return null;
+	
+	sum_qty_net = tDataTable.Compute("SUM(Quantity)",filter);
+	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select(filter))
+	{
+		net_baseQty = 0m;			
+		if(!ri.IsNull("Quantity"))
+			net_baseQty = Convert.ToDecimal(ri["Quantity"]);	
+		
+		input_quantity = Convert.ToDecimal(txtQuantity.Value);
+
+		if(sum_qty_net&lt;=0)
+		return null;
+
+		calculated_arithmetic_quantity_net = input_quantity/sum_qty_net*net_baseQty;
+
+		 if(sender.Name.Contains("btnNetArithmeticQuantity") &amp;&amp; (Convert.ToDecimal(calculated_arithmetic_quantity_net)) &gt; 0m)
+			ri.SetField&lt;|decimal|&gt;("Quantity", Convert.ToDecimal(net_baseQty)+Convert.ToDecimal(calculated_arithmetic_quantity_net));
+	}
+	updateNetSum();
+}
+
+
+function OnComboBoxSelectionChanged(sender, ev)
+{
+	control = sender.Name.Replace("cb", "cls");
+	
+	cls = BaseObject.FindControl(control);
+
+	if(cls == null)
+		return null;
+	
+	if(sender != null &amp;&amp; sender.SelectedItems != null &amp;&amp; sender.SelectedItems.Count &gt; 0)
+		cls.Visibility = Visibility.Visible;
+	else
+		cls.Visibility = Visibility.Hidden;
+		
+	updateSum();
+}
+
+function ClsOnPreviewMouseDown(sender, ev)
+{	
+	control = sender.Name.Replace("cls", "cb");
+	
+	cb = BaseObject.FindControl(control);
+	if(cb != null &amp;&amp; cb.SelectedItems != null &amp;&amp; cb.SelectedItems.Count &gt; 0)
+		cb.SelectedItems.Clear();
+}
+
+function SetLabelPrice(ctrl, val)
+{
+	SetLabelPriceIn(ctrl,val,-1);
+}
+
+
+function SetLabelPriceIn(ctrl, val, val2)
+{
+	price=0.00m;
+	if(!DBNull.Value.Equals(val))
+		price = Convert.ToDecimal(val);
+	
+	lblTarget = BaseObject.FindControl(ctrl);
+	if(lblTarget != null)
+	{
+		if(val2 &lt;= 0)
+			lblTarget.Content = ": " + String.Format("{0:N2}", price);
+		else
+			lblTarget.Content = ": " + String.Format("{0:N2}   ({1:D} Kalem)", price, Convert.ToInt32(val2));
+	}
+}
+
+
+
+
+
+function SetLabelName(ctrl, val)
+{
+	in_name = "";
+	if(!DBNull.Value.Equals(val))
+		in_name = val.ToString();
+	lblTarget = BaseObject.FindControl(ctrl);	
+	if(lblTarget != null)
+		{
+			lblTarget.Content = ": " + in_name.ToString();
+		}
+		else 
+			lblTarget.Content = ": " + in_name.ToString();
+}
+
+
+
+
+
+
+
+
+
+function AddOnClickCb(ctrl, cb)
+{
+	btnSender = BaseObject.FindControl(ctrl);
+	if(btnSender != null)
+		btnSender.Click += cb;
+}
+
+
+function getFilter()
+{
+	cbCode = BaseObject.FindControl("cbCode");
+	cbName = BaseObject.FindControl("cbName");
+	cbColor = BaseObject.FindControl("cbColor");
+    filter = String.Empty;
+    
+    if(cbCode != null &amp;&amp; cbCode.SelectedItems != null &amp;&amp; cbCode.SelectedItems.Count &gt; 0)
+    {
+            filter += "InventoryCode in (\'sql_error_pred\'";
+            foreach(subG in cbCode.SelectedItems)
+                filter += ",\'" + subG.ToString() + "\'";
+            filter += ")";
+
+				
+
+        }
+
+    if(cbName != null &amp;&amp; cbName.SelectedItems != null &amp;&amp; cbName.SelectedItems.Count &gt; 0)
+    {
+    if(filter != "")
+    filter += " and ";
+    
+    filter += "InventoryName in (\'sql_error_pred\'";
+            foreach(mark in cbName.SelectedItems)
+                filter += ",\'" + mark.ToString() + "\'";
+            filter += ")";
+
+			SetLabelName("lblInName",mark.ToString());
+    }
+	
+	if(cbColor != null &amp;&amp; cbColor.SelectedItems != null &amp;&amp; cbColor.SelectedItems.Count &gt; 0)
+    {
+    if(filter != "")
+    filter += " and ";
+    
+    filter += "ItemVariant1Name in (\'sql_error_pred\'";
+            foreach(color in cbColor.SelectedItems)
+                filter += ",\'" + color.ToString() + "\'";
+            filter += ")";
+    }
+	
+	return filter;
+}
+
+function updateSum()
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	targetDataTable = BaseObject.ActiveEntity.Data.Tables[tableName];
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+	{
+		SetLabelPrice("lblsumQuantity", 0);
+		
+	        
+	}else
+	{
+		itemcount = targetDataTable.Compute("Count(GrossQuantity)",filter);
+		qty = targetDataTable.Compute("SUM(GrossQuantity)",filter);
+	
+		SetLabelPriceIn("lblsumQuantity", qty, itemcount);
+		
+	}
+}
+
+function updateNetSum()
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	targetDataTable = BaseObject.ActiveEntity.Data.Tables[tableName];
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+	{
+		SetLabelPrice("lblsum_netQuantity", 0);
+		
+	}else
+	{
+		itemcountnet = targetDataTable.Compute("Count(Quantity)",filter);
+		qtynet = targetDataTable.Compute("SUM(Quantity)",filter);
+		
+		SetLabelPriceIn("lblsum_netQuantity", qtynet, itemcountnet);
+		
+	}
+}
+
+function OnViewLoaded(sender, ev)
+{
+   
+	if(BaseObject == null) 
+        return null;
+    
+	
+	AddOnClickCb("btnUpdateQuantity",OnQtyButtonsClick);
+	AddOnClickCb("btnIncreaseQuantity", OnQtyButtonsClick);
+	AddOnClickCb("btnDecreaseQuantity", OnQtyButtonsClick);
+	AddOnClickCb("btnRemoveRecords", OnQtyButtonsClick);
+	AddOnClickCb("btnArithmeticQuantity", OnQtyButtonsClick);
+	AddOnClickCb("btnNetArithmeticQuantity", OnNetQtyButtonsClick);
+
+
+	clsMark = BaseObject.FindControl("clsMark");
+	clsSubGroup = BaseObject.FindControl("clsSubGroup");
+	
+	if(clsMark != null)
+		clsMark.PreviewMouseDown += ClsOnPreviewMouseDown;
+		
+	if(clsSubGroup != null)
+		clsSubGroup.PreviewMouseDown += ClsOnPreviewMouseDown;
+
+	cbCode = BaseObject.FindControl("cbCode");
+	cbName = BaseObject.FindControl("cbName");
+    cbColor = BaseObject.FindControl("cbColor");
+    
+	if(cbCode != null &amp;&amp; cbCode.Items.Count == 0)
+	{	
+        
+
+		groupsinusage = new List&lt;|string|&gt;();
+		
+		tableName = ValidateEntity();
+		
+		if(tableName != String.Empty)
+		{
+			cbCode.Items.Add("");
+	     	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("InventoryCode IS NOT NULL "))
+				groupsinusage.Add(ri["InventoryCode"].ToString());
+	        	
+		
+	        uniqgroups = groupsinusage.Distinct&lt;|string|&gt;().ToList&lt;|string|&gt;();
+	        foreach(group in uniqgroups){
+	        	cbCode.Items.Add(group);
+				}
+	    	cbCode.SelectionChanged += OnComboBoxSelectionChanged;
+		}
+	}
+	
+	if(cbName != null &amp;&amp; cbName.Items.Count == 0)
+	{
+		marksinusage = new List&lt;|string|&gt;();
+		
+		tableName = ValidateEntity();
+		
+		if(tableName != String.Empty)
+		{
+			cbName.Items.Add("");
+	     	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("InventoryName IS NOT NULL"))
+				marksinusage.Add(ri["InventoryName"].ToString());
+	        	
+	        uniqmarks = marksinusage.Distinct&lt;|string|&gt;().ToList&lt;|string|&gt;();
+	        foreach(mark in uniqmarks){
+	        	cbName.Items.Add(mark);
+				
+				}
+	    	cbName.SelectionChanged += OnComboBoxSelectionChanged;
+		}
+	}
+
+    if(cbColor != null &amp;&amp; cbColor.Items.Count == 0)
+	{	
+        
+
+		colorinusage = new List&lt;|string|&gt;();
+		
+		tableName = ValidateEntity();
+		
+		if(tableName != String.Empty)
+		{
+			cbColor.Items.Add("");
+	     	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("ItemVariant1Name IS NOT NULL"))
+				colorinusage.Add(ri["ItemVariant1Name"].ToString());
+	        
+	        coloruniqgroups = colorinusage.Distinct&lt;|string|&gt;().ToList&lt;|string|&gt;();
+	        foreach(colorgroup in coloruniqgroups){
+	        	cbColor.Items.Add(colorgroup);
+					
+				}
+	    	cbColor.SelectionChanged += OnComboBoxSelectionChanged;
+		}
+	}
+    
+    }
+
+function OnColumnChanged(sender, ev)
+{
+	if(BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null 
+    || !ev.Row.Table.Columns.Contains("InventoryId") 
+    || !ev.Row.Table.Columns.Contains("InventoryName") 
+    || !ev.Row.Table.Columns.Contains("InventoryCode"))
+		return null;
+/*
+	if(BaseObject.CurrentRow.Row.IsNull("ReceiptType") || BaseObject.CurrentRow.Row["ReceiptType"].ToString()=="140")
+        return null;
+*/
+	if(ev.Column.ColumnName != "InventoryId" || ev.Row.IsNull(ev.Column))
+		return null;
+	
+	r = UtilityFunctions.GetDataTableList(BaseObject.ActiveSession.DBInfo.DBProvider, BaseObject.ActiveSession.DBInfo.Connection, null, "r", "select i.InventoryName [inname], i.InventoryCode [incode] from IM_Item i WHERE RecId = " + ev.Row["InventoryId"].ToString());
+	
+	if(r == null || r.Rows.Count &lt;= 0)
+		return null;
+	
+	if(ev.Row["InventoryCode"].ToString() != r.Rows[0]["incode"])
+		ev.Row.SetField&lt;|string|&gt;("InventoryCode", r.Rows[0]["incode"]);
+		
+	if(ev.Row["InventoryName"].ToString() != r.Rows[0]["inname"].ToString())
+		ev.Row.SetField&lt;|string|&gt;("InventoryName", r.Rows[0]["inname"]);
+} </ScriptText>
+</ScriptDefinition>

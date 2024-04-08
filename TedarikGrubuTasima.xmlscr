@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TedarikGrubuTasima" Enabled="true" Priority="0" ScriptName="TedarikGrubuTasima">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="Furkan Usta" EntryDate="2023-03-21T00:00:00">
+      <Change>Order üretim girişleri üzerinden sevk irsaliyesi oluşturulduğu zaman order satırındaki tedarik grubunu açılan özel alana taşımaktadır.</Change>
+    </History>
+  </Histories>
+  <ScriptText>//Generated on 21.03.2023 13:49:39
+/*
+Order üretim girişleri üzerinden sevk irsaliyesi oluşturulduğu zaman order satırındaki tedarik grubunu açılan özel alana taşımaktadır.
+*/
+function OnBeforePost(sender,eventArg)
+{
+ if(BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 134
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptSubType"))
+    return null;
+   
+    foreach (dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("WorkOrderProductionId is not null"))
+    {
+    qry = new StringBuilder();
+    qry.Clear();
+    qry.AppendLine(" select (select WIC.RequirementGroup from MA_WorkOrderItem WIC with (nolock) ");
+    qry.AppendLine(" where WIC.WorkOrderId = (select WI.WorkOrderId from MA_WorkOrderItem WI with (nolock) where WI.RecId = WOP.WorkOrderItemId)  ");
+    qry.AppendLine(" and WIC.WorkOrderSubType = 2 and WIC.SubNo=WOP.SubNo and WIC.ParentItemId is null) [rq] ");
+    qry.AppendLine(" from MA_WorkOrderProduction WOP with (nolock) ");
+    qry.AppendLine(" where WOP.RecId = \'"+Convert.ToInt32(dr["WorkOrderProductionId"])+"\'"); 
+
+    dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",qry.ToString());
+    //MessageBox.Show(qry.ToString());
+    if(dt != null &amp;&amp; dt.Rows.Count&gt;=0 )
+    {    
+    //MessageBox.Show(dt.Rows[0]["rq"].ToString());
+    dr.SetField&lt;|string|&gt;("UD_RequirementGroup",dt.Rows[0]["rq"].ToString());
+    }
+    }
+}</ScriptText>
+</ScriptDefinition>

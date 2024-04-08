@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Reçete Otomasyon Sirasi" Enabled="false" Priority="0" ScriptName="ReceteOtomasyonSira">
+  <Events>
+    <Event Enabled="true" ObjectName="RecipeEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="RecipeEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 01.04.2016 15:34:52
+//Generated on 01.04.2016 15:00:22
+function OnBeforePost(sender, eventArg)
+{
+	if (BaseObject != null &amp;&amp; BaseObject.CurrentRow != null)
+	{
+		var detayTablosu = BaseObject.Data.Tables["MA_RecipeItem"];
+		if (detayTablosu.Rows.Count &gt; 0)
+		{
+			var siraNo = -1;
+			for (var i = 0; i &lt; detayTablosu.Rows.Count; i++)
+			{
+				var detay = detayTablosu.Rows[i];
+				
+				var satirSiraNo = -1;
+				if (!System.String.IsNullOrEmpty(detay["AutomationOrderNo"].ToString()))
+					satirSiraNo = Convert.ToInt32(detay["AutomationOrderNo"].ToString());
+				
+				if (siraNo == -1 &amp;&amp; satirSiraNo != -1)
+					siraNo = satirSiraNo;
+				else
+					siraNo++;
+				
+				detay.SetField&lt;|int|&gt;("AutomationOrderNo", siraNo);
+			}
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

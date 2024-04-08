@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparisiOlmayanFatura" Enabled="true" Priority="0" ScriptName="SiparisiOlmayanFatura">
+  <Events>
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 16.03.2023 17:19:26
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null ||BaseObject.CurrentRow.Row == null)
+		return null;
+   
+   
+	foreach( ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("OrderReceiptItemId is null and ReceiptType=1 ") )
+	{
+
+	 BaseObject.ShowMessage("Siparişi olmayan Alım Faturası {scr:SiparisOlmayanFatura}");
+		ev.Cancel=true;
+		return null;
+	
+	}
+}
+	</ScriptText>
+</ScriptDefinition>

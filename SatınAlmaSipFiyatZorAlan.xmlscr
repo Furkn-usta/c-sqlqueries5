@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSipFiyatZorAlan" Enabled="true" Priority="0" ScriptName="SatınAlmaSipFiyatZorAlan">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 28.02.2023 14:44:44
+//SatınAlmaSipFiyatZorAlan
+function OnBeforePost(sender,ev)
+{
+if(BaseObject==null
+||BaseObject.CurrentRow==null
+||BaseObject.CurrentRow.Row==null
+||BaseObject.CurrentRow.Row.IsNull("ReceiptSubType")
+||(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1 &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=3))
+
+return null;
+
+foreach(dr in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("UD_Maliyet is not null or InventoryId is not null"))
+ 	{
+        if(dr.IsNull("ForexUnitPrice") || Convert.ToDecimal(dr["ForexUnitPrice"])  == 0m)
+		{
+			BaseObject.ShowMessage("Döviz Fiyat Alanı Boş Olamaz! {scr:SatınAlmaSipFiyatZorAlan}");
+			ev.Cancel = true;
+			return null;
+		}
+
+		if(dr.IsNull("UD_Maliyet") || dr.IsNull("InventoryId") || dr["UD_Maliyet"].ToString().Trim()  == String.Empty )
+			return null;
+			
+			
+		query = "select cast(isnull(ICI.ForexUnitPrice,0) as decimal (15,2)) [mdf] from MA_InitialCost IC with (nolock) ";
+        query += " left join MA_InitialCostItem ICI on ICI.InitialCostId=IC.RecId ";
+        query += " where ICI.InventoryId=\'"+dr["InventoryId"].ToString()+"\' and IC.InitialCostCode=\'"+dr["UD_Maliyet"].ToString()+"\' ";
+        dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", query);
+	 	
+	    if(dt!=null &amp;&amp; dt.Rows.Count&gt;=0 )
+			{
+       
+     		   if(Convert.ToDecimal(dr["ForexUnitPrice"]) &gt; Convert.ToDecimal(dt.Rows[0]["mdf"]))
+       	 		 {
+       	 		 
+       	 		  sender.ShowMessage("Maliyet Döviz Fiyatı: "+dt.Rows[0]["mdf"].ToString()+" Sipariş Döviz Fiyatı: "+ dr["ForexUnitPrice"].ToString()+" Sipariş Döviz Fiyatı Maliyet Döviz Fiyatından Büyük Olamaz! {scr:SatınAlmaSipFiyatZorAlan}");
+        			ev.Cancel = true;
+					return null;
+        	}
+        	}		
+		
+ 	}
+        
+}</ScriptText>
+</ScriptDefinition>

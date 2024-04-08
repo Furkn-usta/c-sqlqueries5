@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSiparişOluşturmaKontrol" Enabled="true" Priority="0" ScriptName="SatınAlmaSiparişOluşturmaKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 19.12.2023 15:35:26 SatınAlmaSiparişOluşturmaKontrol
+
+function OnBeforePost(sender, e)
+{
+if(BaseObject == null 
+|| BaseObject.CurrentRow == null 
+|| BaseObject.CurrentRow.Row == null
+|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+	return null;
+	
+if(BaseObject.ActiveSession.User.RecId == 1)
+	return null;
+
+	sb = new StringBuilder();
+
+    foreach(ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("WorkOrderItemId is not null and OrderReceiptItemId is not null") )
+            {
+               foreach(ori in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("RecId is not null"))
+                {
+                    if (Convert.ToInt32(ia["OrderReceiptItemId"]) == Convert.ToInt32(ori["RecId"]))
+                        {
+                            sb.Clear();
+                            sb.AppendLine(" select count(X.receipt_no) [count] from ( ");
+                            sb.AppendLine(" select isnull(ORR.ReceiptNo,\'\') [receipt_no],ORR.InsertedBy from IM_ItemAllocation IA with (nolock) ");
+                            sb.AppendLine(" left join IM_OrderReceiptItem ORI with (nolock) on ORI.RecId=IA.OrderReceiptItemId ");
+                            sb.AppendLine(" left  join IM_OrderReceipt ORR with (nolock) on ORR.RecId=ORI.OrderReceiptId ");
+                            sb.AppendLine(" where IA.WorkOrderItemId=\'"+ia["WorkOrderItemId"].ToString()+"\'");
+                            sb.AppendLine(" and IA.OrderReceiptType=1 ");
+                            sb.AppendLine(" and ORR.InsertedBy=\'"+BaseObject.ActiveSession.User.RecId.ToString()+"\'");
+                            sb.AppendLine(" group by ORR.ReceiptNo,ORR.InsertedBy ");
+                            sb.AppendLine(" )X");
+                            //MessageBox.Show(sb.ToString());
+                            dt_sb= UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_sb",sb.ToString());
+                            
+                            if(dt_sb == null || dt_sb.Rows.Count &lt;=0)
+                                return null;
+                            
+                            count_ = Convert.ToInt32(dt_sb.Rows[0]["count"]);
+                            if(count_ &gt;= 1)
+                            {
+                                sender.ShowMessage("Bu Order İçin Daha Önce Oluşturmuş Olduğunuz Bir Sipariş Fişi Bulunmaktadır. Birden Fazla Sipariş Fişi Oluşturma Yetkiniz Bulunmamaktadır..scr{SatınAlmaSiparişOluşturmaKontrol}");
+                                e.Cancel = true;
+                                return null;
+                            }
+                        }
+                }   
+            }	
+}
+
+
+                             
+                             </ScriptText>
+</ScriptDefinition>

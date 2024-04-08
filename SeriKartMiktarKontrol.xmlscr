@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SeriKartMiktarKontrol" Enabled="true" Priority="0" ScriptName="SeriKartMiktarKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventorySerialEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventorySerialEN" />
+  </Events>
+  <Histories />
+  <ScriptText>function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null)
+		return null;
+
+	quantity_ = Convert.ToDecimal(BaseObject.CurrentRow.Row["Quantity"]);
+	
+	if(quantity_ &gt; 50 || quantity_ &lt; 1 )
+	{
+		sender.ShowMessage("Ağırlık 1 ile 50 Arasında Girilmelidir..! {scr: SeriKartMiktarKontrol}");
+		ev.Cancel=true;
+		return null;
+	}
+	
+}
+</ScriptText>
+</ScriptDefinition>

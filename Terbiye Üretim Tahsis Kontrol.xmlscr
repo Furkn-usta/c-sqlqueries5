@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Terbiye Üretim Tahsis Kontrol" Enabled="false" Priority="0" ScriptName="Terbiye Üretim Tahsis Kontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="TWorkOrderEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="TWorkOrderEN" />
+  </Events>
+  <Histories />
+  <ScriptText>function OnBeforePost (sender,eventArg)
+{
+	 if(BaseObject!=null &amp;&amp; BaseObject.CurrentRow!=null &amp;&amp; BaseObject.CurrentRow.Row!=null &amp;&amp; BaseObject.CurrentRow.Row["Status"].ToString=="4"  )
+ 	 {
+			dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt","select RecId from IM_ItemAllocation with (nolock) where WorkOrderItemId in (select RecId from MA_WorkOrderItem with (nolock) where WorkOrderId in (select RecId from MA_WorkOrder with (nolock) where RecId="+BaseObject.CurrentRow.Row["RecId"].ToString()+"))");
+					if(dt != null &amp;&amp; dt.Rows.Count &gt; 0)
+					{
+					sender.ShowMessage("Tahsis varken durumu iptal edildi yapamazsiniz.{Scr: Depo İrsaliyesiz Çikiş}");
+					eventArg.Cancel=true;
+					return null;
+					}
+			
+		  }
+	}
+</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SASiparisKontrol" Enabled="false" Priority="0" ScriptName="SASiparisKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" ObjectName="OrderReceiptVM" />
+    <Event Enabled="true" EventName="BeforeCommandExecution" FunctionName="OnBeforeCommandExecution" ObjectName="OrderReceiptVM" />
+  </Events>
+  <Histories>
+    <History EditedBy="Furkan Usta" EntryDate="2022-09-22T00:00:00">
+      <Change />
+    </History>
+  </Histories>
+  <ScriptText>function OnBeforePost(sender, ev)
+{
+	
+	dt= new DateTime(2022,10,10);
+
+	if( BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || BaseObject.CurrentRow.Row.IsNull("ReceiptType") || BaseObject.CurrentRow.Row["ReceiptType"].ToString()!="1")
+		return null;
+		
+	if(BaseObject.CurrentRow.Row.HasVersion(DataRowVersion.Original) &amp;&amp; BaseObject.CurrentRow.Row["IsApproved", DataRowVersion.Original] != BaseObject.CurrentRow.Row["IsApproved", DataRowVersion.Current])
+		return null;
+	
+	if(dt&gt;Convert.ToDateTime(BaseObject.CurrentRow.Row["ReceiptDate"]))	
+		return null;
+		
+	j=0;
+	foreach(ori in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("ItemType = 1 and InventoryId is not null and OrderReceiptId is not null "))
+	{
+        j++;
+         query= "select InventoryType from IM_Item where RecId ="+ori["InventoryId"];
+	     dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", query);
+	    
+	     if(ori["UD_OnMaliyetTutar"].ToString()==""|| ori["UD_OnMaliyetTutar"]==0)
+	   	{           
+	   	BaseObject.ShowMessage("Ön Maliyet Tutari Girmeden Kayit yapilamaz! {scr:SASiparisKontrol}");
+     	 ev.Cancel=true;
+	   	return null;
+	   	}
+	  
+	   		if(ori["UnitPrice"].ToString()=="" || ori["UnitPrice"]==0)
+	   	{
+	   	BaseObject.ShowMessage("Bİrim Fiyat Tutari Girmeden Kayit yapilamaz! {scr:SASiparisKontrol}");
+	   	ev.Cancel=true;
+	   	return null;
+	   	} 
+        if(ori.RowState == DataRowState.Deleted || ori.RowState == DataRowState.Detached)
+	        continue;
+	 
+	    udbp = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "udbp", "select isnull(UD_SAOran,0) mbp from IM_Item where RecId = "+ori["InventoryId"].ToString());
+	    if(udbp == null || udbp.Rows.Count &lt;= 0)
+	        continue;
+   
+	    maxBuyPercentage = Convert.ToDecimal(udbp.Rows[0]["mbp"]);
+       	allocQty = 0m;
+	    reqQty = 0m;
+ 
+	        ia = BaseObject.Data.Tables["IM_ItemAllocation"].Select("OrderReceiptItemId="+ori["RecId"].ToString()).FirstOrDefault&lt;|DataRow|&gt;();
+	
+	        
+	    if(ia == null || ia.RowState == DataRowState.Deleted || ia.RowState == DataRowState.Detached) continue;
+	
+	    iv1str = ia["ItemVariant1Id"].ToString();
+	    if(iv1str.Trim().Length==0)
+	        iv1str = "0";
+	    iv2str = ia["ItemVariant2Id"].ToString();
+	    if(iv2str.Trim().Length==0)
+	        iv2str = "0"; 
+	    prQty = 0m;        
+
+
+sender.ShowMessage("WorkOrderItemId"+ia["WorkOrderItemId"].ToString());
+sender.ShowMessage("InventoryId"+ia["InventoryId"].ToString());
+
+	    iarqdt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "iarqdt", "select isnull((select sum(isnull(IA.Quantity,0)) from IM_ItemAllocation IA with(nolock) left join IM_ItemVariant IV with(nolock) on IA.InventoryVariantId = IV.RecId where IA.WorkOrderItemId = "+ia["WorkOrderItemId"].ToString()+" and IA.InventoryId = "+ia["InventoryId"].ToString()+" and InventoryReceiptType is not null and isnull(IV.Variant1Id,0) = "+iv1str+" and isnull(IV.Variant2Id,0) = "+iv2str+"),0) qty, isnull((select sum(isnull(Quantity,0)) from MA_Requirement where WorkOrderItemId = "+ia["WorkOrderItemId"].ToString()+" and InventoryId = "+ia["InventoryId"].ToString()+" and isnull(Variant1,\'\')=\'"+ia["ItemVariant1Code"].ToString()+"\' and isnull(Variant2,\'\')=\'"+ia["ItemVariant2Code"].ToString()+"\'),0) req");
+	    
+	    
+
+	     if(iarqdt != null &amp;&amp; iarqdt.Rows.Count &gt; 0)
+	    {
+	        prQty = Convert.ToDecimal(iarqdt.Rows[0]["qty"]);
+	        reqQty = Convert.ToDecimal(iarqdt.Rows[0]["req"]);
+	    }	
+
+		
+		//sender.ShowMessage("prQty= "+prQty);
+		//sender.ShowMessage("reqQty= "+reqQty);
+
+	    //sender.ShowMessage("SiraNO: "+ori["ItemOrderNo"].ToString()+" CheckPoint1 ");
+
+
+
+	    if(!ia.IsNull("Quantity"))
+	        allocQty = Convert.ToDecimal(ia["Quantity"]);
+	        
+		//sender.ShowMessage("allocQty= "+allocQty);
+	    //sender.ShowMessage("SiraNO: "+ori["ItemOrderNo"].ToString()+" CheckPoint2 ");
+	    defaultAvailBuyingQty = reqQty - prQty;
+	    allowedBuyingQuantity = defaultAvailBuyingQty + defaultAvailBuyingQty * (maxBuyPercentage / 100);
+	 
+       sender.ShowMessage("Gereken="+reqQty);
+	   sender.ShowMessage("prQty="+prQty);
+	   sender.ShowMessage("Tahsis="+allocQty);
+	   sender.ShowMessage("UD_Oran="+maxBuyPercentage);
+	   
+	  
+	    if(allocQty &gt; allowedBuyingQuantity)
+	    {
+            BaseObject.CurrentRow.Row.SetField&lt;|Int16|&gt;("IsApproved", 0);
+            ev.Cancel=true;
+	        return null;
+
+	    }
+	    	//sender.ShowMessage("SiraNO: "+ori["ItemOrderNo"].ToString()+" CheckPoint3 ");
+	}
+}
+
+
+function OnBeforeCommandExecution(sender, cmd)
+{
+	if(cmd.CommandName != "OrderFormPrintCommand" || BaseObject.ActiveEntity == null || BaseObject.ActiveEntity.CurrentRow == null || BaseObject.ActiveEntity.CurrentRow.Row == null
+		|| BaseObject.ActiveEntity.CurrentRow.Row.IsNull("ReceiptType") || Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptType"]) != 1
+		|| BaseObject.ActiveEntity.CurrentRow.Row.IsNull("IsApproved") || Convert.ToInt16(BaseObject.ActiveEntity.CurrentRow.Row["IsApproved"]) == 1)
+		return null;
+	
+	BaseObject.SysManager.ActiveWindowManager.ShowMessage("Onaysiz siparişlerde form yazdirma işlemi yapilamaz! {scr:SASiparisKontrol}", ConstantStr.Warning, Zeta.Common.InformationMessages.MessageBoxButton.OK, Zeta.Common.InformationMessages.MessageBoxImage.Exclamation);
+	cmd.Cancel = true;
+	return null;
+}</ScriptText>
+</ScriptDefinition>

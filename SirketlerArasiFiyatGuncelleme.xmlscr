@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Fiyat kodu 1" Enabled="true" Priority="0" ScriptName="SirketlerArasiFiyatGuncelleme">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryEN" />
+    <Event Enabled="true" EventName="AfterSucceededPost" FunctionName="OnAfterSucceededPost" ObjectName="InventoryEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 4.04.2022 14:46:50
+/*
+RecIdsi 3 ve 4 olmayan tüm şirketlerde satış fiyatlarını aynı yapar.
+*/
+function OnAfterSucceededPost(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || !BaseObject.Data.Tables.Contains("IM_ItemPriceList"))
+    	return null;
+
+	itemprice = BaseObject.Data.Tables["IM_ItemPriceList"].Select("PriceType =  2 and PriceCode =\'1\'").FirstOrDefault&lt;|DataRow|&gt;();
+
+	if(itemprice == null)
+		return null; 
+	
+	sql = "UPDATE IM_ItemPriceList SET Price = " + itemprice["Price"].ToString(System.Globalization.CultureInfo.InvariantCulture) + ", UpdatedAt = GETDATE(), ";
+	sql += " UpdatedBy= "+BaseObject.ActiveSession.User.RecId.ToString() + "  FROM IM_ItemPriceList IPL with (nolock) ";
+	sql += " left join IM_Item  I with (nolock) on I.CompanyId = IPL.CompanyId WHERE IPL.PriceType = 2 and IPL.PriceCode = \'1\' ";
+	sql += " and IPL.InventoryId = I.RecId and I.InventoryCode = \'"+BaseObject.CurrentRow.Row["InventoryCode"].ToString()+"\' ";
+	sql += " and IPL.CompanyId not in (\'3\',\'4\') ";
+//	MessageBox.Show(sql.ToString());
+	
+//	sql = "UPDATE IM_ItemPriceList SET Price = " + itemprice["Price"].ToString(System.Globalization.CultureInfo.InvariantCulture) + ",		 UpdatedAt = GETDATE(), UpdatedBy= "+BaseObject.ActiveSession.User.RecId.ToString() + " 	  FROM IM_ItemPriceList IPL left join IM_Item  I on I.CompanyId = IPL.CompanyId WHERE IPL.PriceType = 2 and IPL.PriceCode = 1 	  and IPL.InventoryId = I.RecId and IPL.CompanyId != " + itemprice["CompanyId"].ToString() + " and I.InventoryCode = \'"+BaseObject.CurrentRow.Row["InventoryCode"].ToString()+"\'";
+	UtilityFunctions.SqlCustomScalarQuery(BaseObject.Connection, null, sql);
+
+}</ScriptText>
+</ScriptDefinition>

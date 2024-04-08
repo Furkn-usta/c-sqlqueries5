@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparisOnayDurumu" Enabled="true" Priority="0" ScriptName="SiparisOnayDurumu">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" />
+    <Event Enabled="true" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 30.01.2023 09:36:19
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null  || BaseObject.CurrentRow.Row.IsNull("ReceiptType") || BaseObject.CurrentRow.Row.IsNull("InsertedBy"))
+		return null;
+		
+				if(BaseObject.IsCopyEntity &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["IsApproved"])==1)
+					BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved",0);
+    
+     
+		if(Convert.ToInt32(BaseObject.CurrentRow.Row["InsertedBy"])== Convert.ToInt32(BaseObject.ActiveSession.User.RecId))
+			{
+
+				if(Convert.ToInt32(BaseObject.CurrentRow.Row["IsApproved"])==1)
+
+				{
+					BaseObject.ShowMessage("Onaylı Çevirme Yetkiniz Yoktur! {scr:SiparişOnayDurumu}");
+					ev.Cancel=true;
+					return null;
+
+
+				}
+			}
+
+}</ScriptText>
+</ScriptDefinition>

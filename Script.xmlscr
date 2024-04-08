@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Script" Enabled="true" Priority="0" ScriptName="Script">
+  <Events>
+    <Event Enabled="true" ObjectName="CurrentAccountEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="CurrentAccountEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="Onur Açan" EntryDate="2016-06-15T00:00:00">
+      <Change />
+    </History>
+  </Histories>
+  <ScriptText>//Generated on 15.06.2016 16:06:45
+function OnBeforePost(sender,e)
+{
+	if(BaseObject!=null &amp;&amp; BaseObject.CurrentRow!=null &amp;&amp; BaseObject.CurrentRow.Row!=null)
+	{
+		if(BaseObject.CurrentRow.Row.IsNull("TaxOfficeId") || BaseObject.CurrentRow.Row["TaxOfficeId"]==0)
+		{
+			BaseObject.ShowMessage("Vergi Dairesi Boş Geçilemez.");
+			e.Cancel=true;
+		}
+		if(BaseObject.CurrentRow.Row.IsNull("TaxNo") || BaseObject.CurrentRow.Row["TaxNo"]==0)
+		{
+			BaseObject.ShowMessage("Vergi numarasi boş geçilemez.");
+			e.Cancel=true;
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

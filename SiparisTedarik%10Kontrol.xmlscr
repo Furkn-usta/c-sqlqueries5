@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparisTedarik%10Kontrol" Enabled="true" Priority="0" ScriptName="SiparisTedarik%10Kontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 04.11.2019 09:00
+function OnBeforePost(seneder,eventArg){
+    if(BaseObject.Name=="OrderReceiptEN"){
+    if(BaseObject != null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; BaseObject.CurrentRow.Row != null &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") &amp;&amp; BaseObject.CurrentRow.Row["ReceiptType"].ToString()=="1" /*&amp;&amp; !BaseObject.CurrentRow.Row.IsNull("IsApproved") &amp;&amp; Convert.ToInt16(BaseObject.CurrentRow.Row["IsApproved"])==1*/ ){
+        oncekiTahsisMiktari=0m;
+        tedarikMiktari=0m;
+        tahsisMikari=0m;
+        kontrol=false;
+        onceki=0m;
+        strQty=new StringBuilder();
+        sb=new StringBuilder();
+        foreach(dr in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select(" InventoryId is not null")){
+            if(dr.RowState!=DataRowState.Deleted){
+                
+	            foreach(itemRow in BaseObject.Data.Tables["IM_ItemAllocation"].Select(" OrderReceiptItemId="+dr["RecId"]+"")){
+			        if(itemRow.RowState!=DataRowState.Deleted &amp;&amp; !dr.IsNull("ItemVariant1Code") &amp;&amp; !dr.IsNull("ItemVariant2Code") ){
+			            str="select isnull(R.Quantity,0) Quantity,isnull(R.Variant1,\'\') Variant1,isnull(R.Variant2,\'\') Variant2 from MA_Requirement R with (nolock) where isnull(R.Variant1,\'\')=\'"+dr["ItemVariant1Code"].ToString()+"\' and isnull(R.Variant2,\'\')=\'"+dr["ItemVariant2Code"].ToString()+"\' and  R.InventoryId="+itemRow["InventoryId"]+" and  R.WorkOrderItemId="+itemRow["WorkOrderItemId"].ToString();
+		                dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);	
+				        if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 ){
+				            tedarikMiktari=Convert.ToDecimal(dt.Rows[0]["Quantity"])+Convert.ToDecimal(dt.Rows[0]["Quantity"])*10/100;
+				            
+				            strQty.Append("select sum(isnull(A.Quantity,0)) Miktar from (select  isnull(IA.Quantity,0)  Quantity from IM_ItemAllocation IA with (nolock) ");
+				            strQty.Append("left join IM_ItemVariant IV with (nolock) on IA.InventoryVariantId=IV.RecId ");
+				            strQty.Append("left join IM_VariantItem VI with (nolock) on VI.RecId=IV.Variant1Id ");
+				            strQty.Append("left join IM_VariantItem VII with (nolock) on VII.RecId=IV.Variant2Id ");
+				            strQty.Append("where IA.OrderReceiptType in (1) and  IA.OrderReceiptItemId&lt;&gt;"+dr["RecId"]+" and  IA.WorkOrderItemId="+itemRow["WorkOrderItemId"]+" and IA.InventoryId="+itemRow["InventoryId"]+" and isnull(VI.ItemCode,\'\')=\'"+dt.Rows[0]["Variant1"].ToString()+"\' and isnull(VII.ItemCode,\'\')=\'"+dt.Rows[0]["Variant2"].ToString()+"\'  ");
+				            strQty.Append(")A ");
+				            dtQty = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",strQty.ToString());	
+				            if(dtQty!=null &amp;&amp; dtQty.Rows.Count&gt;0 &amp;&amp; !dtQty.Rows[0].IsNull("Miktar") &amp;&amp; Convert.ToDecimal(dtQty.Rows[0]["Miktar"])&gt;0 )
+				                oncekiTahsisMiktari= Convert.ToDecimal(dtQty.Rows[0]["Miktar"]);
+				            else
+				                oncekiTahsisMiktari=0m;
+				                
+				            strOnceGelen2="select isnull(RI.Quantity,0) Quantity  from IM_OrderReceiptItem RI with (nolock) where RI.RecId="+dr["RecId"].ToString(); 
+			                dtOnceGelen2 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",strOnceGelen2);
+             
+                            if(dtOnceGelen2!=null &amp;&amp; dtOnceGelen2.Rows.Count&gt;0 &amp;&amp; !dtOnceGelen2.Rows[0].IsNull("Quantity") ){
+                                onceki=Convert.ToDecimal(dtOnceGelen2.Rows[0]["Quantity"]);
+               
+                            }    
+				                
+				            if(!itemRow.IsNull("Quantity") &amp;&amp; (dr.RowState == DataRowState.Added || (onceki!=Convert.ToDecimal(dr["Quantity"])))   &amp;&amp; (oncekiTahsisMiktari+Convert.ToDecimal(itemRow["Quantity"]))&gt;tedarikMiktari){       
+				                BaseObject.ShowMessage(" "+dr["ItemOrderNo"].ToString()+"\'. Siradaki "+dr["InventoryCode"].ToString()+" Kodlu Malzemenin  "+dt.Rows[0]["Quantity"].ToString()+" İhtiyaç Miktarinin %10\'undan Fazla  Giriş yapildiği için sipariş onaysiz Yapilmiştir. {scr:SiparisTedarik%10Kontrol}");
+				                sb.Append(dr["ItemOrderNo"].ToString()+"\'. Siradaki "+dr["InventoryCode"].ToString()+" Kodlu Malzemenin  "+dt.Rows[0]["Quantity"].ToString()+" İhtiyaç Miktarinin %10\'undan Fazla  Giriş yapildiği için sipariş onaysiz Yapilmiştir");
+				                dr.SetField&lt;|int|&gt;("IsApproved",(int)0);
+				                BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved",(int)0);
+				                kontrol=true;
+				            }
+				        }
+			        }
+			    }
+	        }
+	    }
+	    if(kontrol==true){
+             BaseObject.ShowMessage(BaseObject.CurrentRow.Row["ReceiptNo"].ToString()+"\'nolu sipariş tedarik miktarinin %10\'undan fazla giriş yapildiği için onaysiz yapilmiştir.{scr:SiparisTedarik%10Kontrol}","Dikkat");
+	         //taskm=BaseObject.Container.Resolve&lt;|TaskMessageService|&gt;("TaskMessageService");
+	         //taskm.SendEmail("nurettin@xtrbs.com", BaseObject.CurrentRow.Row["ReceiptNo"].ToString()+"\'nolu sipariş tedarik miktarinin %10\'undan fazla giriş yapildiği için onaysiz yapilmiştir.",sb.ToString());
+	    }
+    }
+    }
+}
+ </ScriptText>
+</ScriptDefinition>

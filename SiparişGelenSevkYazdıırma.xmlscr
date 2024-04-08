@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparişGelenLabelSevkYazdıırma" Enabled="false" Priority="0" ScriptName="SiparişGelenLabelSevkYazdıırma">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="OrderReceiptVM" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 13.11.2023 09:48:31 SiparişGelenLabelSevkYazdıırma
+
+RuntimeHost.SetSettingItem("UnsubscribeAllEvents", false);
+
+function ValidateEntity()
+{
+	
+    if(BaseObject == null 
+    || BaseObject.ActiveEntity == null 
+    || BaseObject.ActiveEntity.Data == null 
+	|| BaseObject.ActiveEntity.Data.Tables == null 
+	|| BaseObject.ActiveEntity.CurrentRow.Row.IsNull("ReceiptType")
+	|| (Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptType"])!=2)
+    || (!BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem")))
+		return String.Empty;
+    
+	tableName = "IM_OrderReceiptItem";
+	if(BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem"))
+		tableName = "IM_OrderReceiptItem";
+	return tableName;
+}
+
+
+function OnViewLoaded(sender, ev)
+{
+   
+	if(BaseObject == null) 
+        return null;
+    updateNetSum();    
+}
+
+
+function updateNetSum()
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	targetDataTable = BaseObject.ActiveEntity.Data.Tables[tableName];
+	
+
+		qtynet = targetDataTable.Compute("sum(ReceivedQuantity)","InventoryId is not null");
+		//SetLabelPriceIn("lblsum_nQuantity",qtynet.ToString());
+		MessageBox.Show(qtynet.ToString());		
+		lblTarget = BaseObject.FindControl("lblsum_nQuantity");
+	    lblTarget.Content = ": "+qtynet.ToString();
+	
+}
+</ScriptText>
+</ScriptDefinition>

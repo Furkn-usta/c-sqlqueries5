@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TalimatGirişİrsaliyeKontrol" Enabled="true" Priority="0" ScriptName="TalimatGirişİrsaliyeKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="FurkanUsta" EntryDate="2023-04-26T00:00:00">
+      <Change>Talimattan oluşturulan fason alınan giriş irsaliyelerinde talimatın miktarı ve giriş irsaliyesinin miktarı eşit ise satırı kapatır.</Change>
+    </History>
+  </Histories>
+  <ScriptText>//Generated on 26.04.2023 14:56:15
+/*
+Talimattan oluşturulan fason alınan giriş irsaliyelerinde talimatın miktarı ve giriş irsaliyesinin miktarı eşit ise satırı kapatır.
+*/
+function OnBeforePost (sender, eventArg)
+{
+	if (BaseObject == null 
+		|| BaseObject.Name != "InventoryReceiptEN" 
+		|| BaseObject.CurrentRow == null 
+		|| BaseObject.CurrentRow.Row == null
+        || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 11)
+		return null;
+		
+       foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("WorkOrderReceiptItemId is not null"))
+        {
+            gross_quantity = Convert.ToDecimal(dr["GrossQuantity"]);
+
+        
+            query = " select isnull(ORI.Quantity,0) [mik] from IM_ItemAllocation IA with (nolock) ";
+            query += " left join IM_OrderReceiptItem ORI with (nolock) on ORI.RecId=IA.OrderReceiptItemId ";
+            query += " left join IM_OrderReceipt ORR with (nolock) on ORR.RecId=ORI.OrderReceiptId ";
+            query += " where ORR.ReceiptType=3 and IA.WorkOrderItemId=\'"+dr["WorkOrderReceiptItemId"].ToString()+"\'";
+          
+           //MessageBox.Show(query);
+
+             dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", query);
+
+            if(dt==null || dt.Rows.Count&lt;=0)
+                return null;
+            
+            mik_ = Convert.ToDecimal(dt.Rows[0]["mik"]);
+            if(gross_quantity == mik_)
+            { /*
+            MessageBox.Show("Brüt Mik="+gross_quantity.ToString());
+            MessageBox.Show("Mik="+mik_.ToString());
+            */
+             dr.SetField&lt;|int|&gt;("IsCancelled",1);
+             dr.SetField&lt;|int|&gt;("IsClosed",1);  
+            }
+            
+        }
+
+            foreach(drr in BaseObject.Data.Tables["IM_ItemAllocation"].Select("WorkOrderItemId is not null"))
+             {
+                foreach(d in BaseObject.Data.Tables["IM_ReceiptItem"].Select(""))
+                {
+                gross_quantity = Convert.ToDecimal(d["GrossQuantity"]);  
+
+                query2 = " select isnull(ORI.Quantity,0) [mik] from IM_ItemAllocation IA with (nolock) ";
+                query2 += " left join IM_OrderReceiptItem ORI with (nolock) on ORI.RecId=IA.OrderReceiptItemId ";
+                query2 += " left join IM_OrderReceipt ORR with (nolock) on ORR.RecId=ORI.OrderReceiptId ";
+                query2 += " where ORR.ReceiptType=3 and IA.WorkOrderItemId=\'"+drr["WorkOrderItemId"].ToString()+"\'";
+                dt2 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt2", query2);
+
+                 if(dt2==null || dt2.Rows.Count&lt;=0)
+                    return null;
+ 
+                    mik2_ = Convert.ToDecimal(dt2.Rows[0]["mik"]);
+                    if(gross_quantity == mik2_)
+                     {   /* 
+                        MessageBox.Show("Brüt Mik="+gross_quantity.ToString());
+                     MessageBox.Show("Mik="+mik2_.ToString());
+          */
+             d.SetField&lt;|int|&gt;("IsCancelled",1);
+             d.SetField&lt;|int|&gt;("IsClosed",1); 
+             
+            		}
+            		 if(gross_quantity != mik2_)
+                     { /*
+                        MessageBox.Show("xBrüt Mik="+gross_quantity.ToString());
+                     MessageBox.Show("xMik="+mik2_.ToString());
+           */
+             d.SetField&lt;|int|&gt;("IsCancelled",0);
+             d.SetField&lt;|int|&gt;("IsClosed",0); 
+               
+            		}
+                 }
+             }
+
+        
+   
+}</ScriptText>
+</ScriptDefinition>

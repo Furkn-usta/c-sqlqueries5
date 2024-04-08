@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SeriKartRenkAktarım" Enabled="true" Priority="0" ScriptName="SeriKartRenkAktarım">
+  <Events>
+    <Event Enabled="true" ObjectName="InventorySerialEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventorySerialEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 19.01.2024 11:15:36 SeriKartRenkAktarım
+
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null)
+		return null;
+	
+	if(BaseObject.ActiveSession.User.RecId !=1)
+		return null;
+		html_code_renk_satir_ = "";
+		html_code_renk_yazi_ = "";
+	if(!BaseObject.CurrentRow.Row.IsNull("UD_RenkSatir"))
+		{
+            if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Beyaz")
+                html_code_renk_satir_ ="";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Sarı")
+                html_code_renk_satir_ ="#FFFF00";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Yeşil")
+                html_code_renk_satir_ ="#00FF00";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Mavi")
+                html_code_renk_satir_ ="#0000FF";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Pembe")
+                html_code_renk_satir_ ="#FFC0CB";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Turuncu")
+                html_code_renk_satir_ ="#FFA500";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Kırmızı")
+                html_code_renk_satir_ ="#FF0000";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Gri")
+                html_code_renk_satir_ ="#808080";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Lila")
+                html_code_renk_satir_ ="#C8A2C8";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Ekru")
+                html_code_renk_satir_ ="#CDB891";
+            else if(BaseObject.CurrentRow.Row["UD_RenkSatir"].ToString()=="Hardal")
+                html_code_renk_satir_ ="#FFDB58";
+            else
+                html_code_renk_satir_ = "";
+
+			BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_ExternalBackgroundColorExp",html_code_renk_satir_.ToString());
+		}
+		
+	if(!BaseObject.CurrentRow.Row.IsNull("UD_RenkYazi"))
+		{
+            {
+            if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Beyaz")
+                html_code_renk_yazi_ ="";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Sarı")
+                html_code_renk_yazi_ ="#FFFF00";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Yeşil")
+                html_code_renk_yazi_ ="#00FF00";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Mavi")
+                html_code_renk_yazi_ ="#0000FF";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Pembe")
+                html_code_renk_yazi_ ="#FFC0CB";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Turuncu")
+                html_code_renk_yazi_ ="#FFA500";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Kırmızı")
+                html_code_renk_yazi_ ="#FF0000";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Gri")
+                html_code_renk_yazi_ ="#808080";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Lila")
+                html_code_renk_yazi_ ="#C8A2C8";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Ekru")
+                html_code_renk_yazi_ ="#CDB891";
+            else if(BaseObject.CurrentRow.Row["UD_RenkYazi"].ToString()=="Hardal")
+                html_code_renk_yazi_ ="#FFDB58";
+            else
+                html_code_renk_yazi_ = "";
+			BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_ExternalForegroundColorExp",html_code_renk_yazi_.ToString());
+            }
+		}
+			
+}
+</ScriptText>
+</ScriptDefinition>

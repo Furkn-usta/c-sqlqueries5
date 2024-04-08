@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SözlesmeFaturaKontrolSatırMiktarAktarımı" Enabled="true" Priority="0" ScriptName="SözlesmeFaturaKontrolSatırMiktarAktarımı">
+  <Events>
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 19.10.2023 15:12:18	 
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null 
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType"))
+		return null;
+		if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 22 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 11)
+			{
+				foreach(ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("ItemType=2 and InventoryId is null and Quantity is not null and UD_ContUnitPriceControl=0")) 
+	       		{
+	       			soz_fiy = Convert.ToDecimal(ri["Quantity"]);
+	       			//UD_ContUnitPrice
+	       			ri.SetField&lt;|decimal|&gt;("UD_ContUnitPrice",Convert.ToDecimal(soz_fiy));
+	       			ri.SetField&lt;|int|&gt;("UD_ContUnitPriceControl",1);
+	       		}
+			}
+}		</ScriptText>
+</ScriptDefinition>

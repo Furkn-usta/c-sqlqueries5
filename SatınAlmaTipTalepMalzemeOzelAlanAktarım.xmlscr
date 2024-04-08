@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaTipTalepMalzemeOzelAlanAktarım" Enabled="false" Priority="0" ScriptName="SatınAlmaTipTalepMalzemeOzelAlanAktarım">
+  <Events>
+    <Event Enabled="true" ObjectName="DemandReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="DemandReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 17.11.2023 13:19:43 SatınAlmaTipTalepMalzemeOzelAlanAktarım
+function OnColumnChanged(sender, e)
+{   	
+    if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null 
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+	|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1 ) 
+		return null;
+	
+		if(e.Row.Table.TableName == "IM_DemandReceiptItem" &amp;&amp; e.Column.ColumnName == "InventoryId")
+	   {
+		    str="select isnull(I.UD_Tip,\'\') [tip] from IM_Item I with (nolock) where isnull(I.RecId,0) =\'"+e.Row["InventoryId"].ToString()+"\'";
+		    dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);	
+		    //MessageBox.Show(str);
+		    if(dt == null || dt.Rows.Count&lt;=0)
+		    	return null;
+		    tip_ = dt.Rows[0]["tip"].ToString();
+		       
+		   	e.Row.SetField&lt;|string|&gt;("UD_MalzemeCinsi",tip_.ToString());
+	   }
+	
+	
+}</ScriptText>
+</ScriptDefinition>

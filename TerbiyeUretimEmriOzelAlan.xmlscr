@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TerbiyeUretimOzelAlan" Enabled="false" Priority="0" ScriptName="TerbiyeUretimOzelAlan">
+  <Events>
+    <Event Enabled="true" ObjectName="WorkOrderEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="WorkOrderEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 12.06.2023 14:52:11
+function OnBeforePost(sender,eventArg)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null)
+		return null;
+	
+	foreach(dr in BaseObject.Data.Tables["MA_WorkOrderItem"].Select("InventoryId is not null"))
+	{
+		if(dr.RowState == DataRowState.Deleted || dr.RowState == DataRowState.Detached)
+			continue;
+	
+		foreach(drd in BaseObject.Data.Tables["MA_WorkOrderItemReceipt"].Select("WorkOrderReceiptItemId = " + dr["RecId"].ToString()))
+		{
+			if(drd.RowState == DataRowState.Deleted || drd.RowState == DataRowState.Detached)
+				continue;
+		
+			dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt","select * from IM_ReceiptItem with (nolock) where RecId = " + drd["InventoryReceiptItemId"].ToString());
+        	if(dt != null &amp;&amp; dt.Rows.Count &gt; 0)
+        	{
+        		//atamalar yapılacak
+        	
+        		break;
+        	}
+        }
+	}
+}</ScriptText>
+</ScriptDefinition>

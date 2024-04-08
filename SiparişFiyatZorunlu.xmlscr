@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparişFiyatZorunlu" Enabled="true" Priority="0" ScriptName="SiparişFiyatZorunlu">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>function OnBeforePost(sender,e)
+{
+	if(BaseObject!=null &amp;&amp; BaseObject.CurrentRow!=null &amp;&amp; BaseObject.CurrentRow.Row!=null )
+	{
+		if(BaseObject.CurrentRow.Row["ReceiptType"].ToString()=="2")
+		{
+			
+       		foreach(dr in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("InventoryId is not null and (UD_SiparisGrubu not in (\'ÜCRETSİZ TAMİR\',\'HAM İADE\',\'İŞLEMSİZ İADE\') )"))
+     		{
+      		if(dr.IsNull("UnitPrice") || Convert.ToDecimal(dr["UnitPrice"]) == 0)
+	        	{
+          			BaseObject.ShowMessage("Fiyat Eksik Tanimlandi.");
+          			e.Cancel=true;
+          			return null;
+        		}
+       		}
+       	}
+    }
+}</ScriptText>
+</ScriptDefinition>

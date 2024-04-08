@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Rulo Formül" Enabled="true" Priority="0" ScriptName="Rulo Formül">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="Alper" EntryDate="2015-01-08T16:37:07.3962988+02:00">
+      <Change>System default version</Change>
+    </History>
+  </Histories>
+  <ScriptText>function OnBeforePost(sender,eventArg)
+{ 
+ if(BaseObject.CurrentRow!=null)
+{ 
+toplam=0;
+foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("UD_RuloMik &gt; 0 and UD_Rulo &gt; 0"))
+	{
+     		toplam=System.Convert.ToDecimal(dr["UD_Rulo"]) * System.Convert.ToDecimal(dr["UD_RuloMik"]);
+     		dr.SetField&lt;|decimal|&gt;("Quantity",toplam);  	
+	} 
+}
+}
+		    </ScriptText>
+</ScriptDefinition>

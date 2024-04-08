@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TalepMalzemeUreticiKodu" Enabled="true" Priority="0" ScriptName="TalepMalzemeUreticiKodu">
+  <Events>
+    <Event Enabled="true" ObjectName="DemandReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="DemandReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 26.01.2024 19:16:17 TalepMalzemeUreticiKodu
+function OnColumnChanged(sender, ev)
+{
+	if( BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null )
+		return null;
+	
+	if(BaseObject.Name!="DemandReceiptEN" || ev.Row.Table.TableName != "IM_DemandReceiptItem" || ev.Row.IsNull("ReceiptType") 
+		|| (ev.Column.ColumnName != "CurrentAccountId"))
+         return null;
+         
+  	if(ev.Row.IsNull("CurrentAccountId") || ev.Row.IsNull("InventoryId"))
+        return null;
+	
+
+	 cari_rec_ = "";
+	 if(!ev.Row.IsNull("CurrentAccountId") &amp;&amp; Convert.ToInt32(ev.Row["CurrentAccountId"])&gt;0m)
+	 	cari_rec_=Convert.ToInt32(ev.Row["CurrentAccountId"]);
+		 	
+	
+
+	if(ev.Column.ColumnName == "CurrentAccountId")
+	{
+        query = " select case  when  isnull(I.CurrentAccountId,0)="+Convert.ToInt32(ev.Row["CurrentAccountId"])+" then isnull(I.ProducerInventoryCode,\'\')";
+        query +=" when  isnull(I.UD_Cari1,0)="+Convert.ToInt32(ev.Row["CurrentAccountId"])+" then isnull(I.UD_CariAciklama1,\'\') "; 
+        query +=" when  isnull(I.UD_Cari2,0)="+Convert.ToInt32(ev.Row["CurrentAccountId"])+" then isnull(I.UD_CariAciklama2,\'\') "; 
+        query +=" when  isnull(I.UD_Cari3,0)="+Convert.ToInt32(ev.Row["CurrentAccountId"])+" then isnull(I.UD_CariAciklama3,\'\') "; 
+        query +=" when  isnull(I.UD_Cari4,0)="+Convert.ToInt32(ev.Row["CurrentAccountId"])+" then isnull(I.UD_CariAciklama4,\'\') "; 
+        query += "  end as [kode] from IM_Item I with (nolock) where I.RecId=\'"+ev.Row["InventoryId"].ToString()+"\' ";
+       // MessageBox.Show(query.ToString());
+        dt = UtilityFunctions.GetDataTableList(BaseObject.ActiveSession.DBInfo.DBProvider, BaseObject.ActiveSession.DBInfo.Connection, null, "dt", query);
+		if(dt == null || dt.Rows.Count &lt;= 0)
+				return null;    
+         kode_ = dt.Rows[0]["kode"].ToString();
+             
+                     
+	    ev.Row.SetField&lt;|string|&gt;("Explanation", kode_.ToString()); 
+    }
+}</ScriptText>
+</ScriptDefinition>

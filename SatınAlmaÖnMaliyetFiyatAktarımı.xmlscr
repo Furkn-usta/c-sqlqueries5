@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaÖnMaliyetFiyatAktarımı" Enabled="true" Priority="0" ScriptName="SatınAlmaÖnMaliyetFiyatAktarımı">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="AfterPost" FunctionName="OnAfterPost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 2.10.2023 16:02:41
+
+function OnAfterPost(sender,ev)
+{
+  
+    if (BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+    		return null;
+
+      foreach(ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("OrderReceiptItemId is not null and InventoryId is not null")) 
+          {
+            foreach(ori in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("InventoryId is not null and UnitPrice is not null")) 
+                {
+                  if(ia["InventoryId"].ToString().Trim() == ori["InventoryId"].ToString().Trim())
+                  {
+                  l_sb = new StringBuilder();
+                  l_sb.Clear();
+                  l_sb.AppendLine(" select top 1 isnull(ICI.UnitPrice,0) [init_unit_price],isnull(IC.RecId,0) [init_rec] from MA_WorkOrder WO with (nolock) ");
+                  l_sb.AppendLine(" left join MA_WorkOrderItem WOI with (nolock) on WO.RecId=WOI.WorkOrderId");
+                  l_sb.AppendLine(" left join MA_InitialCost IC with (nolock) on IC.RecId=WO.InitialCostId");
+                  l_sb.AppendLine(" left join MA_InitialCostItem ICI with (nolock) on IC.RecId=ICI.InitialCostId");
+                  l_sb.AppendLine(" where WOI.RecId=\'"+ia["WorkOrderItemId"].ToString()+"\' and ICI.InventoryId=\'"+ori["InventoryId"].ToString()+"\'");
+                  l_sb.AppendLine(" group by ICI.UnitPrice,IC.RecId");
+                  l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt",l_sb.ToString());
+                  
+                  if(l_dt == null || l_dt.Rows.Count &lt;=0)
+           	        return null;
+                  init_unit_price_ = Convert.ToDecimal(l_dt.Rows[0]["init_unit_price"]);
+                     ori.SetField&lt;|decimal|&gt;("UD_InitialUnitPrice",Convert.ToDecimal(init_unit_price_));               
+	                                        
+                      }
+                }          
+        }         
+}
+</ScriptText>
+</ScriptDefinition>

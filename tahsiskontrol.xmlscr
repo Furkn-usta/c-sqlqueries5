@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisKontrol" Enabled="true" Priority="0" ScriptName="TahsisKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 31.01.2023 10:32:37
+function OnBeforePost(sender, ev)
+
+{
+	if(BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null 
+    || BaseObject.CurrentRow.Row["AccessCode"].ToString()!="FABRIC"     )
+	   return null;
+	  
+	foreach(dr in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select(""))
+	{
+		query="select sum(IA.Quantity) [tahsis_mik] from IM_ItemAllocation IA with (nolock) ";
+		query+="left join MA_WorkOrderItem WOI on WOI.RecId=IA.WorkOrderItemId";
+		query+="where IA.OrderReceiptItemId="+dr["RecId"]+" and "+ dr["OrderReceiptId"]+ "="+BaseObject.CurrentRow.Row["RecId"];
+		dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt", query);
+		MessageBox.Show(query.ToString());
+		if(dt == null &amp;&amp; dt.Rows.Count &lt;0 )
+				return null;
+
+		}
+		}</ScriptText>
+</ScriptDefinition>

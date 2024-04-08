@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="ŞirkettenŞirketeFaturaKopyalama" Enabled="true" Priority="0" ScriptName="ŞirkettenŞirketeFaturaKopyalama">
+  <Events>
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="On2BeforePost" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="AfterSucceededPost" FunctionName="OnAfterSucceededPost" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 6.03.2023 10:48:40
+copy_status="";
+
+function OnBeforePost(sender,ev)
+{	
+
+
+if (BaseObject == null 
+|| BaseObject.CurrentRow == null
+|| BaseObject.CurrentRow.Row == null
+|| BaseObject.ActiveSession.Company.RecId != 1
+|| BaseObject.CurrentRow.Row.IsNull("RecId")
+|| BaseObject.CurrentRow.Row.IsNull("UD_ControlCode")
+|| Convert.ToInt32(BaseObject.CurrentRow.Row["UD_ControlCode"]) == 1
+|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 120)
+return null;
+
+global:copy_status=BaseObject.IsCopyEntity.ToString();
+
+
+query = "select isnull(max(UD_CopyCounter),0)  [cc] from IM_Invoice as I with (nolock) where I.CompanyId="+BaseObject.ActiveSession.Company.RecId.ToString()+" and  I.ReceiptType= "+Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) ;
+dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+
+    if(dt==null &amp;&amp; dt.Rows.Count&lt;0)
+    return null; 
+
+    if(Convert.ToInt32(dt.Rows[0]["cc"])==0)
+	{
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_CopyCounter",1);   
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_ControlCode",1);
+   	} 
+     else
+    {
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_CopyCounter",Convert.ToInt32(dt.Rows[0]["cc"])+1);  
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_ControlCode",1);  
+	}
+	foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select())
+    	{
+    		dr.SetField&lt;|int|&gt;("UD_CopyCounter",BaseObject.CurrentRow.Row["UD_CopyCounter"]);
+    	}
+   	
+}
+sayac=0;
+fat_stat=0;
+function On2BeforePost(sender,ev)
+{
+if (BaseObject == null 
+|| BaseObject.CurrentRow == null
+|| BaseObject.CurrentRow.Row == null
+|| global:copy_status=BaseObject.IsCopyEntity.ToString()!="True")
+return null; 
+
+query2 = "select count(UD_CopyCounter) [cc2] from IM_Invoice as I with (nolock) where I.ReceiptType=120 and I.CompanyId in (1,3) and I.UD_CopyCounter="+Convert.ToInt32(BaseObject.CurrentRow.Row["UD_CopyCounter"]);
+dt2 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt2",query2);
+
+ if(dt2==null &amp;&amp; dt2.Rows.Count&lt;0)
+    return null;
+    
+    
+    global:sayac =  global:sayac + 1;
+    
+    if(Convert.ToInt32(dt2.Rows[0]["cc2"]) == 2 &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["IsCopied"]) == 0 &amp;&amp;  global:sayac == 2)
+    {
+     //MessageBox.Show(sayac.ToString());
+   	 foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select())
+    	{
+    		fiy = Convert.ToDecimal(dr["UnitPrice"]);
+    		fiy = fiy * 0.95;    		
+    		dr.SetField&lt;|decimal|&gt;("UnitPrice",Convert.ToDecimal(fiy));
+    	}
+    	global:fat_stat=dt2.Rows[0]["cc2"];
+    }
+    
+}
+
+function OnAfterSucceededPost(sender,ev)
+{	
+
+if (BaseObject == null 
+|| BaseObject.CurrentRow == null
+|| BaseObject.CurrentRow.Row == null
+|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+|| global:fat_stat!=2
+|| BaseObject.CurrentRow.Row.IsNull("UD_CopyCounter")
+|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 120)
+return null;
+
+//MessageBox.Show(BaseObject.ActiveSession.Company.RecId.ToString());
+
+	  		updateSQL="update IM_Invoice set UD_CopyStatus=\'Kopyalandı. Sayac:No"+Convert.ToInt32(BaseObject.CurrentRow.Row["UD_CopyCounter"])+"\' where CompanyId=1 and ReceiptType=120 and UD_CopyCounter="+Convert.ToInt32(BaseObject.CurrentRow.Row["UD_CopyCounter"]);
+			UtilityFunctions.SqlCustomNonQuery(BaseObject.Connection, BaseObject.Transaction, updateSQL);
+			
+	  	
+	
+	  		 }
+	  		 			
+	  		 		
+	
+	 	 	
+
+</ScriptText>
+</ScriptDefinition>

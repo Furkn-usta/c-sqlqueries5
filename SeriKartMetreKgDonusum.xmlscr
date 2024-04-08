@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SeriKartMetreKgDonusum" Enabled="true" Priority="0" ScriptName="SeriKartMetreKgDonusum">
+  <Events>
+    <Event Enabled="true" ObjectName="InventorySerialEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventorySerialEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 31.01.2023 14:07:01
+
+function OnBeforePost(sender,ev){
+if( BaseObject == null 
+|| BaseObject.CurrentRow == null 
+|| BaseObject.CurrentRow.Row == null
+|| BaseObject.CurrentRow.Row.IsNull("Width")
+ ||BaseObject.CurrentRow.Row.IsNull("Weight")
+	||	BaseObject.CurrentRow.Row.IsNull("Quantity")
+ )
+		return null;
+		
+		en = Convert.ToDecimal(BaseObject.CurrentRow.Row["Width"]);
+		gramaj = Convert.ToDecimal(BaseObject.CurrentRow.Row["Weight"]);
+		miktar = Convert.ToDecimal(BaseObject.CurrentRow.Row["Quantity"]);
+		
+		tot_kg = miktar /( 100000/(en*gramaj));
+		
+		BaseObject.CurrentRow.Row.SetField&lt;|decimal|&gt;("UD_Metraj",Convert.ToDecimal(tot_kg));
+}
+</ScriptText>
+</ScriptDefinition>

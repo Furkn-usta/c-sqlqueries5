@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Siparişteki Özel Alanlarin İş Emrine Aktarilmasi" Enabled="true" Priority="0" ScriptName="SiparistenPartiyeAktarim">
+  <Events>
+    <Event Enabled="true" ObjectName="WorkOrderEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="WorkOrderEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 16.02.2016 14:08:20
+function OnColumnChanged(sender, eventArg){
+	if(BaseObject!=null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; eventArg.Row.Table.TableName == "MA_WorkOrderItem" 
+	    &amp;&amp; eventArg.Column.ColumnName=="OrderItemId" &amp;&amp; !eventArg.Row.IsNull("OrderItemId")
+	    &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("WorkOrderType") &amp;&amp; BaseObject.CurrentRow.Row["WorkOrderType"].ToString()=="10"
+	    //&amp;&amp; !BaseObject.CurrentRow.Row.IsNull("RepairType") &amp;&amp; BaseObject.CurrentRow.Row["RepairType"].ToString()=="1"
+	     ){
+		sb= new StringBuilder();
+		sb.AppendLine("select top 1 Convert(BIGINT,r.ReceiptNo) [FisNo], ri.ItemOrderNo [SatirNo],isnull(r.UD_SiparisTuru,\'\') SiparisTuru from");
+		sb.AppendLine("IM_OrderReceiptItem ri with (nolock)");
+		sb.AppendLine("left join IM_OrderReceipt r with (nolock) on ri.OrderReceiptId = r.RecId");
+		sb.AppendLine("where ri.RecId="+eventArg.Row["OrderItemId"].ToString()+"");
+
+		dtSipInfo = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection,BaseObject.Transaction, "IM_OrderReceiptItem",sb.ToString());
+		
+		if (dtSipInfo != null &amp;&amp; dtSipInfo.Rows.Count &gt; 0){
+			var sipFisNo = dtSipInfo.Rows[0][0].ToString();
+			var sipSatirNo = dtSipInfo.Rows[0][1].ToString();
+			sb.Clear();
+			sb.AppendLine("select count(w.RecId) RowNo from MA_WorkOrder w with (nolock)");
+		    sb.AppendLine("left join MA_WorkOrderItem wi with (nolock) on wi.WorkOrderId=w.RecId and wi.WorkOrderSubType=1");
+		    sb.AppendLine("left join IM_OrderReceiptItem ori with (nolock) on ori.RecId=wi.OrderItemId");
+		    sb.AppendLine("where ori.RecId="+eventArg.Row["OrderItemId"].ToString()+"");
+        	dtPInfo = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "MA_WorkOrder",sb.ToString()); 
+			
+			var sipArtanNo = "1";
+			var siparisTuru = "";
+			if (dtSipInfo.Rows[0][2] != System.DBNull.Value){
+				siparisTuru = dtSipInfo.Rows[0][2].ToString();
+			}
+ 
+			if (dtPInfo != null &amp;&amp; dtPInfo.Rows.Count &gt; 0 &amp;&amp; !dtPInfo.Rows[0].IsNull("RowNo") &amp;&amp; Convert.ToInt32(dtPInfo.Rows[0][0])&gt;0  )
+			{
+				var numericArtisDegeri = Convert.ToInt32(dtPInfo.Rows[0][0]) + 1;
+				sipArtanNo = numericArtisDegeri.ToString();				
+			} 
+ 			BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("WorkOrderNo", sipFisNo.ToString() +"+" + sipSatirNo.ToString() +"+"+  sipArtanNo.ToString());
+			BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_SiparisTuru", siparisTuru); 
+		}
+		sb.Clear();
+		sb.AppendLine("select top 1 UD_SiparisGrubu, UD_Kombin, CustomerOrderNo, UD_Ambalaj,Explanation");
+		sb.AppendLine("from IM_OrderReceiptItem with (nolock) where");
+		sb.AppendLine("IM_OrderReceiptItem.RecId="+eventArg.Row["OrderItemId"].ToString()+"");
+		dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "IM_OrderReceiptItem",sb.ToString());
+		if(dt!=null &amp;&amp; dt.Rows.Count&gt;0)
+		{
+			if(dt.Rows[0][0] != System.DBNull.Value)
+			{
+				udcol1=eventArg.Row.Table.Columns["UD_SiparisGrubu"];
+				eventArg.Row[udcol1]=dt.Rows[0][dt.Columns["UD_SiparisGrubu"]];
+			}
+			
+			if(dt.Rows[0][1] != System.DBNull.Value)
+			{
+				udcol2=eventArg.Row.Table.Columns["UD_Kombin"];
+				eventArg.Row[udcol2]=dt.Rows[0][1];
+			}
+			
+			if (dt.Rows[0][2] != System.DBNull.Value)
+			{
+				BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("CustomerOrderNo", dt.Rows[0][2].ToString());
+			}
+			
+			if(dt.Rows[0][3] != System.DBNull.Value)
+			{
+				udcol2=eventArg.Row.Table.Columns["UD_Ambalaj"];
+				eventArg.Row[udcol2]=dt.Rows[0][3];
+			}
+			
+			if(dt.Rows[0][4] != System.DBNull.Value)
+			{
+				udcol2=eventArg.Row.Table.Columns["Explanation"];
+				eventArg.Row[udcol2]=dt.Rows[0][4];
+			}
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

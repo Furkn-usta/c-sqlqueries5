@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SevkOnayKontrolÇıkış" Enabled="true" Priority="0" ScriptName="SevkOnayKontrolÇıkış">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null 
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+	|| (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) &lt; 100 )    &amp;&amp;     (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=17 )
+	|| (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])==130)
+	|| (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])==131))
+		return null;
+		
+	foreach (dr  in BaseObject.Data.Tables["IM_ReceiptItem"].Select("ExplanationCode is not null"))
+	{
+		query = "select IsShipment [ss] from MA_WorkOrderQCTest MAQ with(nolock) where MAQ.InventoryReceiptItemId =\'"+ dr["ExplanationCode"].ToString() +"\'";
+		str = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "str",query);
+	
+			if(str==null || str.Rows.Count&lt;0)
+			   return null;
+			 
+			if(!BaseObject.CurrentRow.Row.IsNull("OutWarehouseId") &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["OutWarehouseId"])==8 &amp;&amp; str.Rows[0]["ss"].ToString() == "0")
+			  {
+			   sender.ShowMessage(dr["ItemOrderNo"].ToString()+". Satır Sevk Edilebilir Onay kutusu işaretlenmemiş. Sevk Edilebilir Onayı Olmayan Malzemelerin Kayhan Boyalı Depoya  Sevki Gerçekleştirilemez..! {scr: DepoSevkOnayKontrol}");
+		  	   ev.Cancel=true;
+			  return null;
+			  }			   	
+	}
+	
+	foreach (dr  in BaseObject.Data.Tables["IM_ReceiptItem"].Select(""))
+	{
+		if(dr.IsNull("ExplanationCode") &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("OutWarehouseId") &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["OutWarehouseId"])==8)
+		{
+			 sender.ShowMessage("Manuel Kayıt Gerçekleştirilemez..! {scr: DepoSevkOnayKontrol}");
+		  	  ev.Cancel=true;
+			  return null;
+			  }			   	
+	}
+	
+	
+}</ScriptText>
+</ScriptDefinition>

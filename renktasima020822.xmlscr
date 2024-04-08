@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="RenkAciklamaTasima" Enabled="true" Priority="0" ScriptName="RenkAciklamaTasima">
+  <Events>
+    <Event Enabled="true" ObjectName="TWorkOrderEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="TWorkOrderEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 12.08.2022 15:12:27
+function OnBeforePost(sender, ev)
+{
+	if( BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null )
+		return null;
+
+	if( BaseObject.CurrentRow.Row.IsNull("WorkOrderType") || Convert.ToInt32(BaseObject.CurrentRow.Row["WorkOrderType"]) != 15 )
+		return null;
+		
+    foreach(drr in BaseObject.Data.Tables["MA_WorkOrderItem"].Select("RecId IS NOT NULL"))
+    {
+     a="select vi.Explanation from MA_WorkOrderItem woi with (nolock) left join IM_VariantItem vi with (nolock) on vi.ItemCode=woi.OperationCode where OperationCode is not null and WorkOrderId="+drr["WorkOrderId"].ToString();
+	 b = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "b", a);
+
+		if(b == null || b.Rows.Count &lt;= 0)
+			return null;
+	drr.SetField&lt;|string|&gt;("UD_Aciklama", b.Rows[0]["Explanation"].ToString());
+    }
+}
+
+		</ScriptText>
+</ScriptDefinition>

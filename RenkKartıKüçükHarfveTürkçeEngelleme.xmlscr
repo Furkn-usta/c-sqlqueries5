@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="RenkKartıKüçükHarfveTürkçeEngelleme" Enabled="false" Priority="0" ScriptName="RenkKartıKüçükHarfveTürkçeEngelleme">
+  <Events>
+    <Event Enabled="true" ObjectName="VariantColorItemEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="VariantColorItemEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 9.08.2023 10:41:35
+
+
+function OnBeforePost(sender, ev)
+{ 
+
+	if(BaseObject == null 	
+	|| BaseObject.CurrentRow == null 	
+	|| BaseObject.CurrentRow.Row == null)
+		return null;
+
+name_=BaseObject.CurrentRow.Row["ItemCode"].ToString().Trim();
+
+counter=0;
+sayac=0;
+
+seslii="ı";
+seslig="ğ";
+sesliu="ü";
+seslis="ş";
+seslio="ö";
+seslic="ç";
+
+sesli_i="İ";
+sesli_g="Ğ";
+sesli_u="Ü";
+sesli_s="Ş";
+sesli_o="Ö";
+sesli_c="Ç";
+
+lock=false;
+	for (counter = 0; counter &lt; name_.Length; counter++)
+			{
+     
+      if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(seslii)) sayac += 1;
+      
+      if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(seslig)) sayac += 1;
+      
+      if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(sesliu)) sayac += 1;
+       
+      if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(seslis)) sayac += 1;    
+       
+      if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(seslio)) sayac += 1;
+             
+      if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(seslic)) sayac += 1;
+      
+      if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(sesli_i)) sayac += 1;
+      
+	  if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(sesli_g)) sayac += 1;
+
+	  if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(sesli_u)) sayac += 1;
+
+	  if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(sesli_s)) sayac += 1;
+
+	  if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(sesli_o)) sayac += 1;
+
+   	  if (Convert.ToChar(name_.Substring(counter, 1)) == Convert.ToChar(sesli_c)) sayac += 1;  
+     
+           for(i=97;i&lt;=122;i++) // küçük harf
+                {
+                dizi=[i];
+                if(Convert.ToChar(i) == Convert.ToChar(name_.Substring(counter, 1)))
+                sayac += 1;
+                }
+        
+        
+			}
+
+          
+
+				if(sayac&gt;0) 
+   				lock=true;
+					if(lock)
+					{
+					sender.ShowMessage("Kodu Kısmında Küçük Harf ve Tükçe Karakter Kullanılamaz Dikkat..! {scr RenkKartıKüçükHarfveTürkçeEngelleme}");
+					ev.Cancel=true;
+					return null;  
+					}  
+   			  
+		}
+</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,102 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSipİrsaliyeFiyatKontrol" Enabled="true" Priority="0" ScriptName="SatınAlmaSipİrsaliyeFiyatKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnReceiptColumnChanged" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="Furkan Usta" EntryDate="2023-10-11T00:00:00">
+      <Change>Satın Alma Siparişindekiden oluşturulan irsaliyenin fiyatında değişiklik yapılırsa uyarı verip kaydı engelleyecektir. Satırda döviz seçili ise döviz fiyatlarını seçili değil ise normal fiyatları karşılaştırır.</Change>
+    </History>
+  </Histories>
+  <ScriptText>//Generated on 11.10.2023 12:35:17 SatınAlmaSipİrsaliyeFiyatKontrol
+/*
+Satın Alma Siparişindekiden oluşturulan irsaliyenin fiyatında değişiklik yapılırsa uyarı verip kaydı engelleyecektir. Satırda döviz seçili ise döviz fiyatlarını seçili değil ise normal fiyatları karşılaştırır.
+*/
+gLock = false;
+function OnReceiptColumnChanged(sender, ev)
+{
+	if( BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null )
+		return null;
+	
+	if(BaseObject.Name!="InventoryReceiptEN" 
+	|| ev.Row.Table.TableName != "IM_ReceiptItem" 
+	|| ev.Row.IsNull("ReceiptType") )
+    return null;
+
+      
+
+   /*  
+    if(ev.Row.IsNull("UnitPrice") )
+        return null;
+    */
+     
+
+    if ((ev.Column.ColumnName == "ForexUnitPrice" &amp;&amp; !ev.Row.IsNull("ForexId") ) &amp;&amp; !ev.Row.IsNull("OrderReceiptItemId"))
+     
+      {
+              query =  " select isnull(ORI.ForexUnitPrice,0) [fup] from IM_OrderReceipt ORR with (nolock) ";
+              query += " left join IM_OrderReceiptItem ORI with (nolock) on ORI.OrderReceiptId=ORR.RecId  ";
+              query += " where ORI.RecId=\'"+ev.Row["OrderReceiptItemId"].ToString()+"\'";
+              dt=UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+            
+                if(dt==null || dt.Rows.Count&lt;0)
+                  return null;
+
+                satin_alma_fiy = Convert.ToDecimal(dt.Rows[0]["fup"]);
+                
+                irsa_fiy = Convert.ToDecimal(ev.Row["ForexUnitPrice"]);
+
+              if(Convert.ToDecimal(satin_alma_fiy) != Convert.ToDecimal(irsa_fiy))
+              {
+            //	MessageBox.Show("Faturada Fiyat Üzerinde Değişiklik Yapıldı. Satın Alma Sipariş Fiyatı="+satin_alma_fiy.ToString()+" Fatura Fiyatı="+fatura_fiy.ToString());
+              BaseObject.ShowMessage("İrsaliyede Fiyat Üzerinde Değişiklik Yapıldı. Satın Alma Sipariş Fiyatı="+satin_alma_fiy.ToString()+" Fatura Fiyatı="+irsa_fiy.ToString()+" {scr:SatınAlmaSipFiyatKontrol} ");
+              global:gLock = true;
+              }
+          }	 
+          
+            if ((ev.Column.ColumnName == "UnitPrice" &amp;&amp;  ev.Row.IsNull("ForexId") ) &amp;&amp; !ev.Row.IsNull("OrderReceiptItemId"))
+     
+      {
+              query =  " select isnull(ORI.UnitPrice,0) [up] from IM_OrderReceipt ORR with (nolock) ";
+              query += " left join IM_OrderReceiptItem ORI with (nolock) on ORI.OrderReceiptId=ORR.RecId  ";
+              query += " where ORI.RecId=\'"+ev.Row["OrderReceiptItemId"].ToString()+"\'";
+              dt=UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+            
+                if(dt==null || dt.Rows.Count&lt;0)
+                  return null;
+
+                satin_alma_fiy = Convert.ToDecimal(dt.Rows[0]["up"]);
+                
+                irsa_fiy = Convert.ToDecimal(ev.Row["UnitPrice"]);
+
+              if(Convert.ToDecimal(satin_alma_fiy) != Convert.ToDecimal(irsa_fiy))
+              {
+            //	MessageBox.Show("Faturada Fiyat Üzerinde Değişiklik Yapıldı. Satın Alma Sipariş Fiyatı="+satin_alma_fiy.ToString()+" Fatura Fiyatı="+fatura_fiy.ToString());
+              BaseObject.ShowMessage("İrsaliyede Fiyat Üzerinde Değişiklik Yapıldı. Satın Alma Sipariş Fiyatı="+satin_alma_fiy.ToString()+" Fatura Fiyatı="+irsa_fiy.ToString()+" {scr:SatınAlmaSipFiyatKontrol} ");
+              global:gLock = true;
+              }
+      }	 
+    }   
+
+    
+      
+function OnBeforePost(sender,ev)
+{
+  	if(BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || global:gLock == false
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+        return null;
+		
+  if(global:gLock==true)
+    {
+      sender.ShowMessage("Satın Alma Siparişi ve İrsaliye Fiyatı Farklı Olduğundan Kayıt Yapılamadı..scr{SatınAlmaSipFiyatKontrol}");
+      ev.Cancel = true;
+      return null;
+    }
+}</ScriptText>
+</ScriptDefinition>

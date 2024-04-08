@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaOrderMiktarTaşıma" Enabled="true" Priority="0" ScriptName="SatınAlmaOrderMiktarTaşıma">
+  <Events>
+    <Event Enabled="true" ObjectName="ContractEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="ContractEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 24.12.2022 11:49:51
+
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+	|| (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1))
+		return null;
+		
+	foreach (dr  in BaseObject.Data.Tables["SM_ContractItem"].Select("WorkOrderReceiptItemId is not null"))
+	{
+		query = "select Cast(isnull(WOI.Distance,0) as decimal (15,0)) [mik] from MA_WorkOrderItem WOI with (nolock) where WOI.RecId=\'"+ dr["WorkOrderReceiptItemId"].ToString() +"\'";
+		str = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "str",query);
+	
+			if(str==null || str.Rows.Count&lt;0)
+			   return null;
+			   
+		dr.SetField&lt;|decimal|&gt;("Quantity",Convert.ToDecimal(str.Rows[0]["mik"]));
+			 		   	
+	}
+	
+	
+}</ScriptText>
+</ScriptDefinition>

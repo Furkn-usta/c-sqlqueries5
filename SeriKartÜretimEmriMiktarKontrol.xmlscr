@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SeriKartÜretimEmriMiktarKontrol" Enabled="true" Priority="0" ScriptName="SeriKartÜretimEmriMiktarKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventorySerialEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventorySerialEN" />
+  </Events>
+  <Histories />
+  <ScriptText>/*
+Paketleme işleri ekranında üretim emrinden 10 kg fazlasına izin verecektir. 10 kgdan fazla giriş yapılmaya çalışılır ise script kaydı engelleyecektir.
+*/
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null)
+		return null;
+
+		work_rec = BaseObject.CurrentRow.Row["WorkOrderReceiptItemId"].ToString();
+	//	MessageBox.Show(work_rec);
+		query ="  select top 1 isnull(WO.Quantity,0) [mik] from MA_WorkOrder WO with (nolock)";
+		query +=" left join MA_WorkOrderItem WOI with (nolock) on WOI.WorkOrderId=WO.RecId ";
+		query +=" where WOI.RecId=\'"+work_rec+"\'";
+		dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+					
+			if(dt==null || dt.Rows.Count&lt;0)
+			 return null;
+			 mik_ = Convert.ToDecimal(dt.Rows[0]["mik"]) + 10;
+		
+		query2 =" select sum(isnull(SC.Quantity,0)) [mik2] from IM_SerialCard SC with (nolock) where WorkOrderReceiptItemId=\'"+work_rec+"\'";
+		dt2 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt2",query2);
+					
+			if(dt2==null || dt2.Rows.Count&lt;0)
+			 return null;
+			
+			 quantity_ = Convert.ToDecimal(BaseObject.CurrentRow.Row["Quantity"]);
+			 mik2_ = Convert.ToDecimal(dt2.Rows[0]["mik2"]) + quantity_ ;
+		 	 /*
+		 MessageBox.Show(mik_.ToString());
+		 MessageBox.Show(mik2_.ToString());
+		 */
+		 if(mik2_ &gt; mik_)
+			 {
+				sender.ShowMessage("Üretim Emrinden Fazla Seri Oluşturulamaz..! Üretim Emri Miktarı="+mik_.ToString()+" Toplam Seri Miktarı= "+mik2_.ToString()+" {scr: SeriKartÜretimEmriMiktarKontrol}"); 
+				ev.Cancel=true;
+				return null;
+			 }
+}
+</ScriptText>
+</ScriptDefinition>

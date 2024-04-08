@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Reçete Hesaplama" Enabled="false" Priority="0" ScriptName="Reçete Hesaplama">
+  <Events>
+    <Event Enabled="true" ObjectName="RecipeEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="RecipeEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 29.02.2016 16:39:41
+function OnBeforePost(sender, eventArg)
+{ 
+	if (BaseObject != null &amp;&amp; BaseObject.CurrentRow != null)
+	{
+		var dtProgramlar = BaseObject.Data.Tables["MA_RecipeOpr"].Select("","ItemOrderNo",DataViewRowState.CurrentRows);
+		var dtDetaylar = BaseObject.Data.Tables["MA_RecipeItem"];
+		
+		if (dtProgramlar != null &amp;&amp; dtProgramlar.Length &gt; 0)
+		{
+			var satirNo = 1;
+			for(var i = 0; i &lt; dtProgramlar.Length; i++)
+			{
+				var drProgramDetay = dtProgramlar[i];
+				if (drProgramDetay != null)
+				{
+					var programId = drProgramDetay["RecipeProgramId"].ToString();
+					var drDetaySerisi = dtDetaylar.Select("RecipeProgramId = \'" + programId + "\'");
+					
+					for (var j = 0; j &lt; drDetaySerisi.Length; j++)
+					{
+						var drDetay = drDetaySerisi[j];
+						drDetay.SetField&lt;|int|&gt;("ItemNo", Convert.ToInt16(satirNo));
+						satirNo++;
+					}
+				}
+			}
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

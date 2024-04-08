@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="ŞirkettenFaturaKopyalama" Enabled="true" Priority="0" ScriptName="ŞirkettenFaturaKopyalama">
+  <Events>
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="FurkanUsta" EntryDate="2023-03-06T00:00:00">
+      <Change>Faturada açılan özel alana tik atıldığı zaman satırda bulunan malzemelerin döviz fiyatlarını 0.95 ile çarpıp aynı alana yazmaktadır. Bir kere çalışması için kontrol kodu 1 yapılarak script devre dışı bırakılır. Satırlarda 0.95 ile çarpılan satırların özel alanına tik atılır. Sadece 120 tipindeki faturlarda çalışmaktadır.</Change>
+    </History>
+  </Histories>
+  <ScriptText>//Generated on 6.03.2023 14:09:18
+
+function OnBeforePost(sender,ev)
+{	
+
+if (BaseObject == null 
+|| BaseObject.CurrentRow == null
+|| BaseObject.CurrentRow.Row == null
+|| BaseObject.ActiveSession.Company.RecId != 3
+|| BaseObject.CurrentRow.Row.IsNull("UD_ControlCode")
+|| Convert.ToInt32(BaseObject.CurrentRow.Row["UD_ControlCode"]) == 1
+|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 120
+|| Convert.ToBoolean(BaseObject.CurrentRow.Row["UD_UpdateStat"]).ToString()=="False")
+return null;
+
+if(Convert.ToBoolean(BaseObject.CurrentRow.Row["UD_UpdateStat"]).ToString()=="True")
+{
+BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("UD_UpdateStatus","Güncelleme Yapıldı.");
+BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_ControlCode",1);
+BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("CurrentAccountId",1675);
+}
+
+
+foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("ForexUnitPrice is not null"))
+    	{
+    		fiy = Convert.ToDecimal(dr["ForexUnitPrice"]);
+    		fiy = fiy * 0.95;    		
+    		dr.SetField&lt;|decimal|&gt;("ForexUnitPrice",Convert.ToDecimal(fiy));
+    		dr.SetField&lt;|int|&gt;("UD_RowUpdateStatus",1);
+    	}
+}</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Reçete Miktar Kontrol" Enabled="false" Priority="0" ScriptName="Reçete Miktar Kontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="RecipeEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="RecipeEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 06.11.2016 21:47:52
+function OnBeforePost(sender, eventArg)
+{
+	if (BaseObject != null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; BaseObject.CurrentRow.Row != null)
+	{
+		if(BaseObject.ActiveSession.Company.CompanyCode == "01")
+		return null;
+
+		d1=(decimal)0;
+		foreach(itemRow in BaseObject.Data.Tables["MA_RecipeItem"].Select("InventoryId is not null and Quantity is not null"))
+			d1 = d1 + Convert.ToDecimal(itemRow["Quantity"]);
+		
+		if(d1 != (decimal)0 &amp;&amp; d1 != (decimal)1)
+		{
+			eventArg.Cancel=true;
+			BaseObject.ShowMessage("Üretim Yönetimi Reçete miktar toplami 1 den farkli olamaz..");
+			return null;		
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

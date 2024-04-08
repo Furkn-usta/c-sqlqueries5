@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatırMalzemeAccessCodeAktarım" Enabled="true" Priority="0" ScriptName="SatırMalzemeAccessCodeAktarım">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 22.02.2024 13:18:06 SatırMalzemeAccessCodeAktarım
+function OnBeforePost(sender,ev)
+{
+	if(BaseObject == null 
+	    || BaseObject.CurrentRow == null
+	    || BaseObject.CurrentRow.Row == null
+		|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+		 )
+			return null;
+	if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+		return null;
+		
+		foreach(ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("ItemType=1 and ItemOrderNo=1 and InventoryId is not null")) 
+	       {
+			query = "select isnull(I.AccessCode,\'\') [ac_code] from IM_Item I with (nolock) where I.RecId=\'"+ri["InventoryId"].ToString()+"\'";
+			// MessageBox.Show(query.ToString());
+			  dt=UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query.ToString());	       
+	       						 if(dt != null &amp;&amp; dt.Rows.Count &gt; 0)
+									{										
+										BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("AccessCode",dt.Rows[0]["ac_code"].ToString());
+									}
+		   }
+}</ScriptText>
+</ScriptDefinition>

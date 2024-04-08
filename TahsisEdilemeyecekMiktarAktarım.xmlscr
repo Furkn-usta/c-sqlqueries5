@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisEdilemeyecekMiktarAktarım" Enabled="true" Priority="0" ScriptName="TahsisEdilemeyecekMiktarAktarım">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 19.10.2023 16:13:30 TahsisEdilemeyecekMiktarAktarım
+
+function OnBeforePost(sender,ev)
+{
+    if (BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+    || BaseObject.CurrentRow.Row.IsNull("InWarehouseId")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["InWarehouseId"]) != 15
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+        return null;
+
+
+   		 foreach(ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("Quantity is not null")) 
+                {
+                   none_alloc_quant_ = Convert.ToDecimal(ri["Quantity"]);
+                   ri.SetField&lt;|decimal|&gt;("NoneAllocatableQuantity",Convert.ToDecimal(none_alloc_quant_));
+                }
+}</ScriptText>
+</ScriptDefinition>

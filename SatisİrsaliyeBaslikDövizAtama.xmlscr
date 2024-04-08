@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatisİrsaliyeBaslikDövizAtama" Enabled="true" Priority="0" ScriptName="SatisİrsaliyeBaslikDövizAtama">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="InventoryReceiptVM" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 7.03.2024 08:41:03 SatisİrsaliyeBaslikDövizAtama
+
+function OnViewLoaded(sender, ev)
+{
+			if(BaseObject.ActiveEntity == null 
+			|| BaseObject.ActiveEntity.CurrentRow == null 
+			|| BaseObject.ActiveEntity.CurrentRow.Row == null
+			|| BaseObject.ActiveEntity.CurrentRow.Row.IsNull("ReceiptType"))
+				return null;
+				forex_id = 1;
+				type_ = Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ReceiptType"]);
+				
+		    if(type_ == 2	|| type_ == 3	|| type_ == 4	|| type_ == 8	|| type_ == 12	|| type_ == 23	|| type_ == 120	|| type_ == 121	|| type_ == 123	|| type_ == 125	|| type_ == 126	||type_ == 127	|| type_ == 134	|| type_ == 138	|| type_ == 192 )
+			{
+				if(BaseObject.ActiveEntity.CurrentRow.Row.IsNull("ForexId") /*|| Convert.ToInt32(BaseObject.ActiveEntity.CurrentRow.Row["ForexId"]) == 1*/)
+			   				BaseObject.ActiveEntity.CurrentRow.Row.SetField&lt;|int|&gt;("ForexId",Convert.ToInt32(forex_id));
+		   	}
+}
+</ScriptText>
+</ScriptDefinition>

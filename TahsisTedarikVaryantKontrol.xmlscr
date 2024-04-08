@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisTedarikVaryantKontrol" Enabled="true" Priority="0" ScriptName="TahsisTedarikVaryantKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="AfterPost" FunctionName="OnAfterPost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 20.03.2024 09:34:44 TahsisTedarikVaryantKontrol
+function OnAfterPost(sender,ev)
+{
+	if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType"))
+		return null;
+	ia_v1_ = "";
+	ia_v2_ = "";
+	vi_v1_ = "";
+	vi_v2_ = "";
+	foreach(ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("WorkOrderItemId is not null and InventoryId is not null and InventoryVariantId is not null and OrderReceiptItemId is not null"))
+		{
+		foreach(ori in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("RecId is not null"))
+			{
+				if(Convert.ToInt32(ia["OrderReceiptItemId"]) == Convert.ToInt32(ori["RecId"]))
+				{
+						query = "select isnull(VI.ItemCode,\'\') [vi_v1] ,isnull(VI2.ItemCode,\'\') [vi_v2] from IM_ItemVariant IV with(nolock)";
+						query +=" left join IM_VariantItem VI with(nolock) on(VI.RecId = IV.Variant1Id)";
+						query +=" left join IM_VariantItem VI2 with(nolock) on(VI2.RecId = IV.Variant2Id)";
+						query +=" where IV.RecId in ("+ia["InventoryVariantId"].ToString()+")";
+					//	MessageBox.Show(query);
+						dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query.ToString());
+						if(dt != null &amp;&amp; dt.Rows.Count &gt; 0)
+							{
+								vi_v1_ = dt.Rows[0]["vi_v1"].ToString();
+								vi_v2_ = dt.Rows[0]["vi_v2"].ToString();
+							}
+						sb = new StringBuilder();
+						sb.Clear();
+						sb.AppendLine("select isnull(R.Variant1,\'\') [v1] , isnull(R.Variant2,\'\') [v2] from MA_Requirement R with (nolock)");
+						sb.AppendLine("where R.WorkOrderItemId=\'"+ia["WorkOrderItemId"].ToString()+"\'");
+						sb.AppendLine("and R.InventoryId=\'"+ia["InventoryId"].ToString()+"\'");
+						sb.AppendLine("and R.Variant1=\'"+vi_v1_.ToString()+"\'");
+						sb.AppendLine("and R.Variant2=\'"+vi_v2_.ToString()+"\'");
+						sb.AppendLine("and R.RequirementType=4");
+					//	MessageBox.Show(sb.ToString());
+						dt_sb = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_sb",sb.ToString());
+							
+							if(dt_sb != null &amp;&amp; dt_sb.Rows.Count &gt; 0)
+								{
+									v1_ = dt_sb.Rows[0]["v1"].ToString();
+									v2_ = dt_sb.Rows[0]["v2"].ToString();
+								if(!ia.IsNull("ItemVariant1Code"))
+								{
+									ia_v1_ = ia["ItemVariant1Code"].ToString();
+								}
+								if(!ia.IsNull("ItemVariant2Code"))
+								{
+									ia_v2_ = ia["ItemVariant2Code"].ToString();
+								}
+								if(v1_.ToString().Trim() != ia_v1_.ToString().Trim())
+								{
+									sender.ShowMessage("Tahsis Variant1 ve Tedarik Variant1 Birbirinden Farklı");
+									return null;
+								}
+								if(v2_.ToString().Trim() != ia_v2_.ToString().Trim())
+								{
+									sender.ShowMessage("Tahsis Variant2 ve Tedarik Variant2 Birbirinden Farklı");
+									return null;
+								}
+							}
+							if(dt_sb == null || dt_sb.Rows.Count &lt;= 0)
+								{
+									sender.ShowMessage(ori["ItemOrderNo"].ToString()+". Sıra No Tahsis ve Tedarik Variantları Birbirinden Farklı Kontrol Ediniz.");
+										return null;
+								}
+					}
+				}
+		}
+}</ScriptText>
+</ScriptDefinition>

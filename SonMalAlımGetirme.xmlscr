@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SonAlımFiyatGetirme" Enabled="true" Priority="0" ScriptName="SonAlımFiyatGetirme">
+  <Events>
+    <Event Enabled="true" ObjectName="InitialCostEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnColumnChanged" ObjectName="InitialCostEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 20.03.2023 10:45:19
+function OnColumnChanged(sender, ev)
+{
+
+	if(BaseObject == null || BaseObject.CurrentRow == null ||BaseObject.CurrentRow.Row == null || !BaseObject.IsNewRecord)
+		return null;
+	
+	
+				foreach( ri in BaseObject.Data.Tables["MA_InitialCostItem"].Select("RecId is not null"))
+	{
+		q = "select top 1  isnull(IR.NetUnitPrice,0) NetUnitPrice ,isnull(IR.NetUnitPriceForex,0) NetUnitPriceForex from IM_ReceiptItem IR with (nolock) where  IR.ReceiptType = 1 and IR.InventoryId = \'"+ri["InventoryId"].ToString()+"\' order by IR.ReceiptDate desc,IR.RecId desc";
+		r = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "r",q); 
+
+			if(r!= null &amp;&amp; r.Rows.Count &gt; 0)
+		{
+	
+			ri.SetField&lt;|decimal|&gt; ("UnitPrice",r.Rows[0]["NetUnitPrice"]);
+			ri.SetField&lt;|decimal|&gt; ("ForexUnitPrice",r.Rows[0]["NetUnitPriceForex"]);
+		}
+
+}
+}
+</ScriptText>
+</ScriptDefinition>

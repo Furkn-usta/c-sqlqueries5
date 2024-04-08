@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisMail" Enabled="true" Priority="0" ScriptName="TahsisMail">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="AfterSucceededPost" FunctionName="OnAfterSucceededPost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>// Eklenen tahsis mail atılsın
+
+f_added_allocations = new DataTable();
+function OnBeforePost(sender,eventArg) global(f_added_allocations)
+{
+    f_added_allocations = new DataTable();
+    if(BaseObject!=null 
+       &amp;&amp; BaseObject.CurrentRow!=null 
+       &amp;&amp; BaseObject.CurrentRow.Row!=null  
+       &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") 
+       &amp;&amp; (Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"])==1 || Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"])==122))
+    { 
+        if(f_added_allocations == null || f_added_allocations.Columns.Count == 0)
+           SetColumns();
+           
+        foreach(l_row in BaseObject.Data.Tables["IM_ItemAllocation"].Rows)
+        {
+            if(l_row.RowState == DataRowState.Added)
+            {
+                 l_new_row = f_added_allocations.NewRow();
+                 if(!l_row.IsNull("InventoryVariantId"))
+                     l_new_row.SetField&lt;|long|&gt;("InventoryVariantId",Convert.ToInt64(l_row["InventoryVariantId"]));
+                 if(!l_row.IsNull("InventoryId"))
+                     l_new_row.SetField&lt;|long|&gt;("InventoryId",Convert.ToInt64(l_row["InventoryId"]));
+                 if(!l_row.IsNull("WorkOrderItemId"))
+                     l_new_row.SetField&lt;|long|&gt;("WorkOrderItemId",Convert.ToInt64(l_row["WorkOrderItemId"]));
+                     
+                 f_added_allocations.Rows.Add(l_new_row);    
+            }
+        }
+    }
+  
+}
+function OnAfterSucceededPost(sender,eventArg) global(f_added_allocations)
+{
+    if(BaseObject!=null &amp;&amp; BaseObject.CurrentRow!=null &amp;&amp; BaseObject.CurrentRow.Row!=null &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") 
+    &amp;&amp; (Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"])==1 || Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"])==122) &amp;&amp; f_added_allocations != null &amp;&amp; f_added_allocations.Rows.Count &gt; 0)
+    {
+        f_mail_str = string.Empty;
+        l_header_str = "Kumaş Depo-";
+        
+        f_mail_str = BaseObject.CurrentRow.Row["ReceiptNo"].ToString(); 
+        if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 1)
+           f_mail_str += " nolu Mal Alım İrsaliyesi girişi olmuştur.";
+        else
+           f_mail_str += " nolu Mal Alım İade İrsaliyesi girişi olmuştur."; 
+           
+        f_mail_str += "Tahsis detayları aşağıdaki gibidir."+Environment.NewLine;
+        
+        foreach(mailRow in f_added_allocations.Rows)
+        {
+           f_order_no = string.Empty;
+           f_musteri = string.Empty;
+           f_varyant = string.Empty;
+           f_malzeme = string.Empty;
+           
+           if(!mailRow.IsNull("WorkOrderItemId"))
+           {
+               l_str = "select (select CurrentAccountName from FI_Account with (nolock) where RecId = CurrentAccountId) Cari,* from MA_WorkOrder with (nolock) where RecId = (select WorkOrderId from MA_WorkOrderItem with (nolock) where RecId = "+Convert.ToInt32(mailRow["WorkOrderItemId"])+")";
+               l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt", l_str);
+               if(l_dt != null &amp;&amp; l_dt.Rows.Count &gt; 0)
+               {
+                   f_order_no = l_dt.Rows[0]["WorkOrderNo"].ToString();
+                   f_musteri = l_dt.Rows[0]["Cari"].ToString();
+               }
+           }
+           
+           if(!mailRow.IsNull("InventoryVariantId"))
+           {
+               l_sb = new StringBuilder();
+               l_sb.AppendLine("select I.InventoryCode +\' - \'+ I.InventoryName Malzeme"); 
+               l_sb.AppendLine(",VI.ItemCode Renk"); 
+               l_sb.AppendLine("from IM_ItemVariant IV with (nolock) ");
+               l_sb.AppendLine("left join IM_VariantItem VI with (nolock) on IV.Variant1Id = VI.RecId");
+               l_sb.AppendLine("left join IM_Item I with (nolock) on I.RecId = IV.InventoryId");
+               l_sb.AppendLine("where IV.RecId = " + Convert.ToInt32(mailRow["InventoryVariantId"]));
+               l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt", l_sb.ToString());
+               if(l_dt != null &amp;&amp; l_dt.Rows.Count &gt; 0)
+               {
+                   f_varyant = l_dt.Rows[0]["Renk"].ToString();
+                   f_malzeme = l_dt.Rows[0]["Malzeme"].ToString();
+               }
+           }
+           else
+           {
+               l_str = "select I.InventoryCode +\' - \'+ I.InventoryName Malzeme from IM_Item with (nolock) where RecId = "+Convert.ToInt32(mailRow["InventoryId"]);
+               l_dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt", l_str);
+               if(l_dt != null &amp;&amp; l_dt.Rows.Count &gt; 0)
+               {
+                   f_malzeme = l_dt.Rows[0]["Malzeme"].ToString();
+               }
+           }
+           f_mail_str += "Order No : "+f_order_no + " - Musteri : " + f_musteri + " - Malzeme : " + f_malzeme + " - Varyant : " + f_varyant + Environment.NewLine;
+        }
+    
+        // Müşteri adı - order no - varyant - kumaş 
+        
+        l_header_str+="Müşteri Bilgisi:"+f_musteri+"-Order No:"+f_order_no+"-Varyant Bilgisi:"+f_varyant;
+        
+        taskm=BaseObject.Container.Resolve&lt;|TaskMessageService|&gt;("TaskMessageService");
+		taskm.SendEmail("mail@deneme.com",l_header_str,f_mail_str);
+
+    }
+}
+
+function SetColumns()
+{
+       l_column = new DataColumn();
+       l_column.Caption = "WorkOrderItemId";
+       l_column.ColumnName = "WorkOrderItemId";
+       l_column.DataType = UdtTypes.GetUdtSystemType(Schema.Tables[DBTableNames.fpc_Inventory].Fields["RecId"].UdtType);
+       f_added_allocations.Columns.Add(l_column);
+
+       l_column = new DataColumn();
+       l_column.Caption = "InventoryId";
+       l_column.ColumnName = "InventoryId";
+       l_column.DataType = UdtTypes.GetUdtSystemType(Schema.Tables[DBTableNames.fpc_Inventory].Fields["RecId"].UdtType);
+       f_added_allocations.Columns.Add(l_column);
+       
+       l_column = new DataColumn();
+       l_column.Caption = "InventoryVariantId";
+       l_column.ColumnName = "InventoryVariantId";
+       l_column.DataType = UdtTypes.GetUdtSystemType(Schema.Tables[DBTableNames.fpc_Inventory].Fields["RecId"].UdtType);
+       f_added_allocations.Columns.Add(l_column);
+
+
+}
+</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="	Renkaktarma" Enabled="false" Priority="0" ScriptName="Renkaktarma">
+  <Events>
+    <Event Enabled="true" ObjectName="TWorkOrderEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="TWorkOrderEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 1.08.2022 11:45:56
+function OnBeforePost(sender,ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null
+	||  BaseObject.CurrentRow.Row.IsNull("WorkOrderType")|| Convert.ToInt32(BaseObject.CurrentRow.Row["WorkOrderType"])!=15)
+	return null; 
+	foreach(dr in BaseObject.Data.Tables["MA_WorkOrderItem"].Select("RecId is not null"))
+		{			
+			a="select vi.Explanation from MA_WorkOrderItem woi left join IM_VariantItem vi with (nolock) on vi.ItemCode=woi.OperationCode where OperationCode is not null and woi.RecId="+BaseObject.CurrentRow.Row["RecId"];
+	     	b=UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "b",a); 
+			if(!b.Rows[0].IsNull("Explanation"))
+			dr.SetField&lt;|string|&gt;("UD_Veri", b.Rows[0]["Explanation"].ToString());
+		}
+}
+				
+</ScriptText>
+</ScriptDefinition>

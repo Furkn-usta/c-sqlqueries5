@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="MusteriSiparisiZorunluAlan" Enabled="true" Priority="0" ScriptName="Satın Alma Siparişi Zorunlu Alan">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 17.01.2022 11:39:46 Satın Alma Siparişlerinde Termin ve Birim Fiyat Zorunlu Alan Scripti !!
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || !BaseObject.Data.Tables.Contains("IM_OrderReceiptItem") || BaseObject.CurrentRow.Row.IsNull("ReceiptType") || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1)
+		return null;
+		
+	count = BaseObject.Data.Tables["IM_OrderReceiptItem"].Compute("Count(RecId)","UnitPrice is null or UnitPrice &lt;= 0");	
+l_date = new DateTime(1900,1,1);
+termin=Convert.ToDateTime(BaseObject.CurrentRow.Row["OrderDeliveryDate"]);
+fis=Convert.ToDateTime(BaseObject.CurrentRow.Row["ReceiptDate"]);
+if(termin&lt;fis){
+
+BaseObject.ShowMessage("Termin tarihi fiş tarihinden küçük olamaz..! scr{termin}");
+ ev.Cancel=true;
+	    return null;
+}
+foreach(dr in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("RecId is not null") )
+{
+	satirtermin=dr["DeliveryDate"];
+	if(satirtermin&lt;fis)
+	{		
+	
+BaseObject.ShowMessage("Satır termin tarihi fiş tarihinden önce olamaz..! scr{Satır termin}");
+ ev.Cancel=true;
+	    return null;
+	}
+}
+if(BaseObject.CurrentRow.Row.IsNull("OrderDeliveryDate") || Convert.ToDateTime(BaseObject.CurrentRow.Row["OrderDeliveryDate"])&lt;=l_date)
+{
+BaseObject.ShowMessage(" Script : Termin tarihi zorunludur!");
+	    ev.Cancel=true;
+	    return null;
+
+}
+	if(count &gt; 0)
+	{
+		BaseObject.ShowMessage(" script : Birim fiyat ve Termin alanı zorunludur!");
+	    ev.Cancel=true;
+	    return null;
+	}
+}</ScriptText>
+</ScriptDefinition>

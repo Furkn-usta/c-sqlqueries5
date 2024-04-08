@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SeriKartıİrsalyeSatırAktarımı" Enabled="false" Priority="0" ScriptName="SeriKartıİrsalyeSatırAktarımı">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 9.05.2022 16:11:50 SeriKartıİrsalyeSatırAktarımı
+
+function OnBeforePost(sender, ev)
+{
+	foreach(ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("RecId is not null"))
+	{
+	    mSerialTransaction = BaseObject.Data.Tables["IM_SerialTransaction"].Select(String.Format("ReceiptItemId = {0}", ri["RecId"])).FirstOrDefault&lt;|DataRow|&gt;();
+	
+	    q = "select * from IM_SerialCard with(nolock) where RecId = " + mSerialTransaction["SerialCardId"].ToString();
+	    r = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "r", q);
+	
+	    if(r != null &amp;&amp; r.Rows.Count &gt; 0)
+	    {
+	    	if(!r.Rows[0].IsNull("UD_MisirUrunKod"))
+	        	ri.SetField&lt;|int|&gt;("UD_MisirUrunKod", Convert.ToInt32(r.Rows[0]["UD_MisirUrunKod"]));
+	    	if(!r.Rows[0].IsNull("UD_Agirlik"))
+	        	ri.SetField&lt;|decimal|&gt;("UD_Agirlik", Convert.ToDecimal(r.Rows[0]["UD_Agirlik"]));
+	    	if(!r.Rows[0].IsNull("UD_Orjin"))
+	        	ri.SetField&lt;|int|&gt;("UD_Orjin", Convert.ToInt32(r.Rows[0]["UD_Orjin"]));
+	        	
+	        if(!r.Rows[0].IsNull("UD_Composition"))
+	        	ri.SetField&lt;|int|&gt;("UD_Composition", Convert.ToInt32(r.Rows[0]["UD_Composition"]));
+	    	if(!r.Rows[0].IsNull("UD_Supplier"))
+	        	ri.SetField&lt;|decimal|&gt;("UD_Supplier", Convert.ToDecimal(r.Rows[0]["UD_Supplier"]));
+	    	if(!r.Rows[0].IsNull("UD_RollNo"))
+	        	ri.SetField&lt;|int|&gt;("UD_RollNo", Convert.ToInt32(r.Rows[0]["UD_RollNo"]));
+	    }    
+	}
+}</ScriptText>
+</ScriptDefinition>

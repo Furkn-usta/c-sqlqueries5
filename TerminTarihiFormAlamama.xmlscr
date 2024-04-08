@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TerminTarihiFormAlamama" Enabled="false" Priority="0" ScriptName="TerminTarihiFormAlamama">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptVM" />
+    <Event Enabled="true" EventName="BeforeCommandExecution" FunctionName="OnBeforeCommandExecution" ObjectName="OrderReceiptVM" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 30.11.2022 16:20:16
+
+/*
+ Order girişindeki 'Ekler' kısmında en az 1 pdf dökümanı ekleme zorunluluğu getiren script
+*/
+
+function OnBeforeCommandExecution(sender,e)
+{
+  if( BaseObject != null &amp;&amp; e.CommandName == "OrderFormPrintCommand")
+
+  {
+
+   if(BaseObject == null || BaseObject.ActiveEntity.CurrentRow == null || BaseObject.ActiveEntity.CurrentRow.Row == null)
+      return null;
+   
+    variable = variable = BaseObject.ActiveEntity.Data.Tables["IM_OrderReceipt"].Select("OrderDeliveryDate= \'1900-01-01 00:00:00.000\'") ; // post olmadan önce MA_WorkOrderAttachment tablosuna kaydolacak olan verilerin içinde pdf var mı diye kontrol eder
+   
+    if(variable.Length &gt;0)
+    { 
+    	BaseObject.ActiveEntity.ShowMessage("Termin Tarihi Girilmeden Form Alınamaz! scr:{TerminTarihiFormAlamama}");
+        e.Cancel = true ;
+        return null ;
+    }
+}
+ }	
+					
+
+  </ScriptText>
+</ScriptDefinition>

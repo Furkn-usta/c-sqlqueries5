@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Tahsis Kontrol VM" Enabled="true" Priority="0" ScriptName="Tahsis Kontrol VM">
+  <Events>
+    <Event Enabled="true" ObjectName="WorkOrderVM" />
+    <Event Enabled="true" EventName="ViewClosing" FunctionName="OnViewClosing" ObjectName="WorkOrderVM" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 30.10.2018 09:07:04
+function OnViewClosing (sender , eventArg)
+{
+   if(BaseObject.ActiveEntity!=null &amp;&amp; BaseObject.ActiveEntity.CurrentRow!=null &amp;&amp; BaseObject.ActiveEntity.CurrentRow.Row!=null &amp;&amp; BaseObject.ActiveEntity.CurrentRow.Row["WorkOrderType"].ToString()=="10")
+   {
+        foreach(itr in BaseObject.ActiveEntity.Data.Tables["MA_WorkOrderItem"].Select(""))
+        {
+            sumQ =  BaseObject.ActiveEntity.Data.Tables["MA_WorkOrderItemReceipt"].Compute("sum(Quantity)","");            
+            if(Convert.ToDecimal(sumQ.ToString()) &lt; Convert.ToDecimal(itr["Quantity"].ToString()))
+            {
+              MessageBox.Show("Tahsis miktari iş emri miktarindan az.(scr:Tahsis Kontrol VM)","Dikkat");
+	          return null;  
+            }                    
+        }
+   }
+}</ScriptText>
+</ScriptDefinition>

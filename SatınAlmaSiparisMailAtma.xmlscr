@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSiparisMailAtma" Enabled="true" Priority="0" ScriptName="SatınAlmaSiparisMailAtma">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="AfterSucceededPost" FunctionName="OnAfterSucceededPost" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 26.04.2023 15:22:27
+lock=false;
+function OnBeforePost(sender ,eventArg)
+{
+   if (BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1 &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=3))
+   		return null;
+if((BaseObject.CurrentRow.Row.HasVersion(DataRowVersion.Original) &amp;&amp; BaseObject.CurrentRow.Row["IsApproved", DataRowVersion.Original] != BaseObject.CurrentRow.Row["IsApproved", DataRowVersion.Current]) &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["IsApproved"])==1 )
+	{	
+global:lock=true;
+}
+}
+
+
+function OnAfterSucceededPost(sender ,eventArg)
+{
+   if (BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || global:lock==false ||  (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1 &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=3) )
+   		return null;
+   		
+   		if(global:lock=true)	
+   			{
+    l_sb = new StringBuilder();	
+	l_musteri="";
+	l_order="";
+	l_tedarik="";
+	l_satinalmafiyat="";
+	l_satinalmasiparisiverilenmiktar="";
+	l_satinalmasiparisiverilenrenk="";
+	l_birimfiyattl="";
+	l_birimfiyatdoviz="";
+	l_geneltoplam="";
+	l_toplamdoviz="";
+	l_tahsismiktar="";
+	l_tahsismiktar="";
+	l_doviz="";	
+	l_Termin="";
+	
+	l_sb.AppendLine("&lt;html&gt;");
+	l_sb.AppendLine("&lt;style&gt;");
+	l_sb.AppendLine("td,th{");
+	l_sb.AppendLine( "padding: 15px; text-align: left;  position: center; }");
+l_sb.AppendLine("table {");
+ l_sb.AppendLine(" border-collapse: collapse;}");
+
+	l_sb.AppendLine("&lt;/style&gt;");
+	l_sb.AppendLine("&lt;head&gt;&lt;table&gt;");
+	l_sb.AppendLine("&lt;thead&gt;");
+	l_sb.AppendLine("&lt;tr&gt;");
+	l_sb.AppendLine(" &lt;th&gt;Müşteri&lt;/th&gt;");
+	l_sb.AppendLine(" &lt;th&gt;Order No.&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Tedarikçi&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Malzeme Adı&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Terim Tarihi&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Satın Alma Fiyatı&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Satın Alma Siparişi Verilen Miktar&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Satın Alma Siparişi Verilen Renk (Renkler)&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Birim Fiyat TL&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Birim Fiyat Döviz&lt;/th&gt;");
+	l_sb.AppendLine("&lt;th&gt;Döviz Cinsi&lt;/th&gt;");
+	
+	l_sb.AppendLine("&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;");
+	foreach(ori in BaseObject.Data.Tables["IM_ItemAllocation"].Select("RecId is not null")) 
+ 	{	
+		sb = new StringBuilder();	
+		sb.AppendLine("select ISNULL(wo.WorkOrderNo,\'\') [Order No] ,ISNULL(A.CurrentAccountName,0)[Order Müşteri Adı],ISNULL(AA.CurrentAccountName,\'\')[Cari],");
+		sb.AppendLine("ISNULL(orr.OrderDeliveryDate,\'\')[Termin],ISNULL(ori.UnitPrice,0)[satın Alma Sipariş Fiyatı]");
+		sb.AppendLine(",ISNULL(ori.Quantity,0)[satın Alma Sipariş Miktar],ISNULL(VI.ItemName,\'\') [Tahsis Renk],ISNULL(ori.ForexUnitPrice,0)[Döviz Fiyat]");
+		sb.AppendLine(",ISNULL(F.ForexName,\'\') [Doviz Cinsi],ISNULL(IA.Quantity,0) [Tahsis Miktarı],ISNULL(I.InventoryName,\'\') [Malzeme Adı]");
+		sb.AppendLine("from IM_ItemAllocation IA left join IM_OrderReceiptItem ori on ori.RecId=IA.OrderReceiptItemId");
+		sb.AppendLine("left join IM_OrderReceipt orr on ori.OrderReceiptId=orr.RecId");
+		sb.AppendLine("left join MA_WorkOrderItem woi on woi.RecId=IA.WorkOrderItemId");
+		sb.AppendLine("left join MA_WorkOrder wo on wo.RecId=woi.WorkOrderId");
+		sb.AppendLine("left join FI_Account A on A.RecId=wo.CurrentAccountId");
+		sb.AppendLine("left join FI_Account AA on AA.RecId=orr.CurrentAccountId");
+		sb.AppendLine("left join IM_ItemVariant IV on IV.RecId=IA.InventoryVariantId");
+		sb.AppendLine("left join IM_VariantItem VI on VI.RecId=IV.Variant1Id");
+		sb.AppendLine("left join MD_Forex F on F.RecId=ori.ForexId");
+		sb.AppendLine("left join IM_Item I on I.RecId=IA.InventoryId where IA.RecId="+ori["RecId"].ToString());
+		
+
+ 	   l_dt =UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt", sb.ToString());
+ if(l_dt==null || l_dt.Rows.Count&lt;0 )
+		return null;
+       	
+      l_musteri=l_dt.Rows[0]["Order Müşteri Adı"].ToString();
+
+      l_order=l_dt.Rows[0]["Order No"].ToString(); 
+      l_tedarik=l_dt.Rows[0]["Cari"].ToString();
+      l_satinalmafiyat=l_dt.Rows[0]["satın Alma Sipariş Fiyatı"].ToString();
+	  l_satinalmasiparisiverilenmiktar=l_dt.Rows[0]["satın Alma Sipariş Miktar"].ToString();
+      l_satinalmasiparisiverilenrenk=l_dt.Rows[0]["Tahsis Renk"].ToString();
+      l_birimfiyattl=l_dt.Rows[0]["Tahsis Renk"].ToString();
+      l_birimfiyatdoviz=l_dt.Rows[0]["Döviz Fiyat"].ToString();
+      l_tahsismiktar=l_dt.Rows[0]["Tahsis Miktarı"].ToString();
+	  l_Malzeme=l_dt.Rows[0]["Malzeme Adı"].ToString();
+	l_doviz=l_dt.Rows[0]["Doviz Cinsi"].ToString();
+	l_Termin=l_dt.Rows[0]["Termin"].ToString();
+	
+	l_sb.AppendLine("&lt;tr&gt;");
+	l_sb.AppendLine("&lt;td&gt;"+l_musteri.ToString()+"&lt;/td&gt;");
+	l_sb.AppendLine("&lt;td&gt;"+l_order.ToString()+"&lt;/td&gt;");	
+	l_sb.AppendLine("&lt;td&gt;"+l_tedarik.ToString()+"&lt;/td&gt;");
+	l_sb.AppendLine("&lt;td&gt;"+l_Malzeme.ToString()+"&lt;/td&gt;"); 	
+	l_sb.AppendLine("&lt;td&gt;"+l_Termin.ToString()+"&lt;/td&gt;");
+	l_sb.AppendLine("&lt;td&gt;"+l_satinalmafiyat.ToString()+"&lt;/td&gt;"); 
+    l_sb.AppendLine("&lt;td&gt;"+l_tahsismiktar.ToString()+"&lt;/td&gt;"); 
+	l_sb.AppendLine("&lt;td&gt;"+l_satinalmasiparisiverilenrenk.ToString()+"&lt;/td&gt;");
+	l_sb.AppendLine("&lt;td&gt;"+l_birimfiyattl.ToString()+"&lt;/td&gt;"); 
+	l_sb.AppendLine("&lt;td&gt;"+l_birimfiyatdoviz.ToString()+"&lt;/td&gt;"); 
+	l_sb.AppendLine("&lt;td&gt;"+l_doviz.ToString()+"&lt;/td&gt;"); 
+	l_sb.AppendLine("&lt;/tr&gt;"); 
+
+
+	}
+	
+      dt="select sum(isnull(ori.UnitPrice,0)) [gtpl],sum(isnull(ori.ForexUnitPrice,0))[gfrx] from IM_OrderReceiptItem ori   where ori.OrderReceiptId="+BaseObject.CurrentRow.Row["RecId"].ToString();
+     l_dt2 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "l_dt2",dt.ToString());
+		
+   if(l_dt2==null || l_dt2.Rows.Count&lt;0 )
+		return null;
+
+
+	l_sb.AppendLine("&lt;tr&gt; &lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;");
+	
+		l_sb.AppendLine("&lt;th&gt;Genel Toplam TL&lt;/th&gt;&lt;td&gt;"+l_dt2.Rows[0][0].ToString()+"&lt;/td&gt;");
+		l_sb.AppendLine("&lt;th&gt;Genel Toplam Döviz&lt;/th&gt;&lt;td&gt;"+l_dt2.Rows[0][1].ToString()+"&lt;/td&gt;&lt;/tr&gt;");
+		l_sb.AppendLine("&lt;/tbody&gt;&lt;/table&gt;&lt;/head&gt;&lt;/html&gt;");
+
+	
+				taskm=BaseObject.Container.Resolve&lt;|TaskMessageService|&gt;("TaskMessageService");
+								
+                    taskm.SendEmail("ali@sertim.com.tr;mehmetas@sertim.com.tr;vahap.meseoglu@sertim.com.tr;ozgul.donmez@sertim.com.tr;firat.dicle@sertim.com.tr;",BaseObject.CurrentRow.Row["ReceiptNo"]+"nolu Sipariş Onaysız durumundan onaylı duruma geçilmiştir.",l_sb.ToString()+"Bilgi İşlem =&gt; tarafından otomatik olarak gönderilmiştir");
+                    
+		}
+			global:lock=false;
+		}
+	global:lock=false;
+
+	
+	
+   		
+</ScriptText>
+</ScriptDefinition>

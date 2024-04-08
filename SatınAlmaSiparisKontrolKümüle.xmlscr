@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSiparisKontrol" Enabled="true" Priority="0" ScriptName="SatınAlmaSiparisKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 02.02.2023 10:23:45
+function OnBeforePost(sender,ev)
+{
+tot_req= 0m;
+ia_q= 0m;
+er_kod="";
+	if (BaseObject != null 
+	&amp;&amp; BaseObject.CurrentRow != null 
+	&amp;&amp; BaseObject.CurrentRow.Row != null 
+	&amp;&amp; System.Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"]) == 1)
+	{
+	if(BaseObject.CurrentRow.Row["AccessCode"].ToString()=="FABRIC")
+	er_kod="1";
+	if(BaseObject.CurrentRow.Row["AccessCode"].ToString()=="TRIM")
+	er_kod="4";
+	
+		foreach(dr in BaseObject.Data.Tables["IM_ItemAllocation"].Select(""))
+		{
+			
+			sqlStr="select Quantity [q] from MA_Requirement with (nolock) where RequirementType="+er_kod.ToString()+" and InventoryId = "+dr["InventoryId"].ToString()+" and WorkOrderItemId = "+dr["WorkOrderItemId"].ToString()+" and isnull(Variant1,\'\') = \'\'";
+			if(!dr.IsNull("InventoryVariantId"))
+				sqlStr="select Quantity [q] from MA_Requirement with (nolock) where RequirementType="+er_kod.ToString()+" and InventoryId = "+dr["InventoryId"].ToString()+" and WorkOrderItemId = "+dr["WorkOrderItemId"].ToString()+" and isnull(Variant1,\'\') = isnull((select VI.ItemCode from IM_VariantItem VI with (nolock) where VI.RecId = (select IV.Variant1Id from IM_ItemVariant IV with (nolock) where IV.RecId = "+dr["InventoryVariantId"].ToString()+")),\'\')";
+			else if(!dr.IsNull("ItemVariant1Code"))
+				sqlStr="select Quantity [q] from MA_Requirement with (nolock) where RequirementType="+er_kod.ToString()+" and InventoryId = "+dr["InventoryId"].ToString()+" and WorkOrderItemId = "+dr["WorkOrderItemId"].ToString()+" and isnull(Variant1,\'\') = \'"+dr["ItemVariant1Code"].ToString()+"\'";
+		
+			dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",sqlStr);
+		if(dt==null || dt.Rows.Count&lt;0)
+		return null;
+		tot_req=tot_req + Convert.ToDecimal(dt.Rows[0][0]); 
+
+			ia_q = ia_q + Convert.ToDecimal(dr["Quantity"]);
+		
+	//MessageBox.Show(sqlStr.ToString());
+	
+		}
+		qry="select isnull(cast(sum(IA.Quantity)as decimal (15,4)),0)[sumq] from IM_OrderReceipt IR with (nolock) ";
+		qry+=" left join IM_OrderReceiptItem IRI with (nolock) on IRI.OrderReceiptId = IR.RecId ";
+		qry+=" left join IM_ItemAllocation IA with (nolock) on IA.OrderReceiptItemId=IRI.RecId ";
+		qry+=" where IR.AccessCode=\'"+BaseObject.CurrentRow.Row["AccessCode"].ToString()+"\' and IA.WorkOrderItemId="+dr["WorkOrderItemId"].ToString();//+" and IR.AccessCode -0="+BaseObject.CurrentRow.Row["AccessCode"].ToString()
+	
+	//	MessageBox.Show(qry.ToString());
+		dtq = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dtq",qry);
+		if(dtq==null || dtq.Rows.Count&lt;=0)
+		return null;
+	
+		if(Convert.ToDecimal(dtq.Rows[0]["sumq"])+Convert.ToDecimal(ia_q)&gt;Convert.ToDecimal(tot_req))
+		{
+		MessageBox.Show("Toplam Sipariş: "+Convert.ToString(Convert.ToDecimal(dtq.Rows[0]["sumq"])+Convert.ToDecimal(ia_q))+" Tedarik Miktarı: "+tot_req.ToString()+" Tedarik Miktarından Fazla Sipariş Verildiği İçin Kayıt Gerçekleştirilemez.! {scr..SatınAlmaSiparisKontrol}");
+		ev.Cancel=true;
+		return null;
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

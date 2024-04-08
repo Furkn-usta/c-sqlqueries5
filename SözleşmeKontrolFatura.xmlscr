@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SözlesmeFaturaKontrol" Enabled="true" Priority="1" ScriptName="SözlesmeFaturaKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="AfterPost" FunctionName="OnAfterPost" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 17.10.2023 16:43:32 InvoiceEN 
+const_mail_adress="mustafa@ezetriko.com;osman@ezetriko.com";
+sozlesme_mail_konu ="Fatura-Sözleşme Fiyat Aşımı";
+gLock=false;
+function OnAfterPost(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || BaseObject.CurrentRow.Row.IsNull("ReceiptType"))
+		return null;
+	if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 22 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 11)
+	{
+		fatura_no = BaseObject.CurrentRow.Row["ReceiptNo"].ToString();
+		  	foreach(ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("ItemType=2 and InventoryId is null and UD_ContUnitPrice is not null")) 
+	       		{	
+	       		/*
+					old_unit_price = 0m;
+					if (ri["UnitPrice", DataRowVersion.Original] != DBNull.Value)
+						old_unit_price = Convert.ToDecimal(ri["UnitPrice", DataRowVersion.Original]);
+					
+					new_unit_price = 0m;
+					if (ri["UnitPrice"] != DBNull.Value)
+						new_unit_price = Convert.ToDecimal(ri["UnitPrice"]);
+						
+					*/
+					soz_fiyat  = Convert.ToDecimal(ri["UD_ContUnitPrice"]);
+					satir_fiy = Convert.ToDecimal(ri["UnitPrice"]);
+						
+					if(satir_fiy &gt; soz_fiyat)
+					{
+					 OnSendMail(global:const_mail_adress.ToString()
+			  		 ,global:sozlesme_mail_konu.ToString()
+			  		 ,"Fatura Numarası: "+fatura_no.ToString()+" Sözleşme Fiyatı: "+soz_fiyat.ToString("##.00")+" Değişiklik Yapılan Fiyat: "+satir_fiy.ToString("##.00"));
+			  		 global:gLock = true;
+			  		 }
+	            }
+		if(global:gLock)
+			{
+			BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved",0);
+			}
+	}
+	
+}
+
+function OnSendMail(mail_adress, value1,value2)
+{
+
+    tms = BaseObject.Container.Resolve&lt;|TaskMessageService|&gt;("TaskMessageService");
+	mail_adress_ = "";
+	if(!DBNull.Value.Equals(mail_adress_))
+		mail_adress_ = mail_adress.ToString();
+    tms.SendEmail(mail_adress_ , value1, value2);
+
+//sender.ShowMessage(mail_adress+" - "+value1+" - "+value2);
+}
+</ScriptText>
+</ScriptDefinition>

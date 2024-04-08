@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaTalepMalzemeTedarikciGetirme" Enabled="true" Priority="0" ScriptName="SatınAlmaTalepMalzemeTedarikciGetirme">
+  <Events>
+    <Event Enabled="true" ObjectName="DemandReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="DemandReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 19.02.2024 12:08:41 SatınAlmaTalepMalzemeTedarikciGetirme
+
+
+function OnColumnChanged(sender, ev)
+{
+	if( BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null )
+		return null;
+	if(BaseObject.Name!="DemandReceiptEN" 
+	|| ev.Row.Table.TableName != "IM_DemandReceiptItem")	 
+         return null;	
+     if(ev.Row.IsNull("InventoryId") || ev.Row.IsNull("ReceiptType") || ev.Row["ReceiptType"].ToString() != "1") 
+        return null;
+        
+        if(ev.Column.ColumnName=="InventoryId")
+        {
+                     sb = new StringBuilder();
+                    sb.Clear();
+                    sb.AppendLine(" select top 1 isnull(I.CurrentAccountId,0) [cur_id] from IM_Item I with (nolock) ");
+                     sb.AppendLine(" where I.RecId=\'"+ev.Row["InventoryId"].ToString()+"\'");
+                  // MessageBox.Show(sb.ToString());
+                    dt_sb = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_sb",sb.ToString());
+                        
+                    if(dt_sb != null || dt_sb.Rows.Count &gt; 0)
+                        {
+                            ev.Row.SetField&lt;|int|&gt;("CurrentAccountId",Convert.ToInt32(dt_sb.Rows[0]["cur_id"]));
+                        }
+        }
+}
+</ScriptText>
+</ScriptDefinition>

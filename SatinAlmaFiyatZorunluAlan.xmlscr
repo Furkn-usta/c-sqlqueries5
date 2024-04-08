@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatinAlmaFiyatZorunluAlan" Enabled="true" Priority="0" ScriptName="SatinAlmaFiyatZorunluAlan">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 09.03.2024 09:15:52 SatinAlmaFiyatZorunluAlan
+function OnBeforePost(sender, ev)
+{
+	if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+	)
+		return null;
+
+	if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 1 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) == 3)
+	{	
+		foreach(dr in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select(""))
+		{
+			if(dr.IsNull("UnitPrice") || Convert.ToDecimal(dr["UnitPrice"])  == 0m)
+			{
+				BaseObject.ShowMessage("Fiyat alanı boş olamaz! {scr:SatinAlmaFiyatZorunluAlan}");
+				ev.Cancel = true;
+			 	return null;
+			}
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

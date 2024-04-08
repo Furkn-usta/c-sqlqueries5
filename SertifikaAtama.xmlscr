@@ -1,0 +1,130 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SertifikaAtama" Enabled="true" Priority="0" ScriptName="SertifikaAtama">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="FurkanUsta" EntryDate="2023-04-14T00:00:00">
+      <Change>140,120 ve 122 irsaliye tiplerinde satirdaki UD_Sertifika alanina varsa üretim emri yoksa tahsis üzerinden orderin başliğinda bulunan UD_OrgTuru ve Order numarasini yazdirmaktadir.</Change>
+    </History>
+  </Histories>
+  <ScriptText>/*
+140,120 ve 122 irsaliye tiplerinde satirdaki UD_Sertifika alanina varsa üretim emri yoksa tahsis üzerinden orderin başliğinda bulunan UD_OrgTuru ve Order numarasini yazdirmaktadir. (Tahsis üzerinde ayni orderlar var ise gruplama yaparak tek satir şeklinde yazmaktadir.)
+*/
+function OnBeforePost(sender,eventArg){
+	if(BaseObject!=null 
+     &amp;&amp; BaseObject.CurrentRow!=null 
+     &amp;&amp; BaseObject.CurrentRow.Row!=null
+	 &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") 
+     &amp;&amp; (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])==140 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])==120 || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])==122 )
+	 &amp;&amp; BaseObject.CurrentRow.Row.RowState!=DataRowState.Deleted
+	 &amp;&amp; BaseObject.CurrentRow.Row.RowState!=DataRowState.Detached)
+     {
+         sertifika="";
+		if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])==140)
+		{
+           
+			foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("RecId is not null"))
+			{
+			     sertifika="";
+
+			    if(dr.RowState!=DataRowState.Deleted &amp;&amp; BaseObject.CurrentRow.Row.RowState!=DataRowState.Detached)
+			    {
+			    	if(dr.IsNull("WorkOrderReceiptItemId"))
+			    	{
+					str="select STRING_AGG(isnull(WO.WorkOrderNo,\'\')+\'-\'+ isnull(WO.UD_OrgTuru,\'\'),\'\') + \'/\' from MA_WorkOrder WO with(nolock) where WO.RecId in (select WorkOrderId from MA_WorkOrderItem where RecId in (select WorkOrderItemId from IM_ItemAllocation where InventoryReceiptItemId="+dr["RecId"]+")) group by WO.WorkOrderNo for xml path (\'\')";
+					dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);
+			/*
+					MessageBox.Show("1");
+				MessageBox.Show(str);
+					*/	
+					if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 /*&amp;&amp; !dt.Rows[0][0].IsNull*/ &amp;&amp; dt.Rows[0][0].ToString().Trim()!="")
+					{
+						sertifika = sertifika +" "+ dt.Rows[0][0].ToString();
+						dr.SetField&lt;|string|&gt;("UD_Sertifika",sertifika.ToString());
+					}
+					/*
+					if(dt==null || dt.Rows.Count&lt;0 || !dt.Rows[0].IsNull("Sertifika") || dt.Rows[0]["Sertifika"].ToString().Trim()=="" )
+					return null;*/
+					}
+                     
+					else
+					{
+					str="select STRING_AGG(isnull(WO.WorkOrderNo,\'\')+\'-\'+ isnull(WO.UD_OrgTuru,\'\'),\'\') + \'/\' [Sertifika] from MA_WorkOrder WO with(nolock) left join MA_WorkOrderItem WOI with (nolock) on WOI.WorkOrderId=WO.RecId where WOI.RecId="+dr["WorkOrderReceiptItemId"]+" group by WO.WorkOrderNo";
+					dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);
+					/*
+					MessageBox.Show("2");
+					MessageBox.Show(str);
+					*/
+					if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 &amp;&amp; !dt.Rows[0].IsNull("Sertifika") &amp;&amp; dt.Rows[0]["Sertifika"].ToString().Trim()!="")
+					{
+						sertifika = sertifika +" "+ dt.Rows[0][0].ToString();
+						dr.SetField&lt;|string|&gt;("UD_Sertifika",sertifika.ToString());
+					}
+					/*
+					if(dt==null || dt.Rows.Count&lt;0 || !dt.Rows[0].IsNull("Sertifika") || dt.Rows[0]["Sertifika"].ToString().Trim()=="" )
+					return null;
+					*/
+					}
+			    }
+			}
+			
+			
+		} 
+		else if(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])==120)
+		{
+			foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("WorkOrderReceiptItemId is not null"))
+			{
+                sertifika="";
+			   if(dr.RowState!=DataRowState.Deleted &amp;&amp; BaseObject.CurrentRow.Row.RowState!=DataRowState.Detached)
+			   {
+					str="select STRING_AGG(isnull(WO.WorkOrderNo,\'\')+\'-\'+ isnull(WO.UD_OrgTuru,\'\'),\'\') + \'/\' [Sertifika] from MA_WorkOrder WO with(nolock) where WO.RecId=(select WorkOrderId from MA_WorkOrderItem with(nolock) where RecId="+dr["WorkOrderReceiptItemId"]+") group by WO.WorkOrderNo";
+					dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);
+					/*
+					MessageBox.Show("11");
+					MessageBox.Show(str);
+					*/
+					if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 &amp;&amp; !dt.Rows[0].IsNull("Sertifika") &amp;&amp; dt.Rows[0]["Sertifika"].ToString().Trim()!="")
+					{
+						sertifika = sertifika +" "+ dt.Rows[0][0].ToString();
+						dr.SetField&lt;|string|&gt;("UD_Sertifika",sertifika.ToString());
+					}
+				}
+			}
+		
+		}
+		else
+		{
+			foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("RecId is not null"))
+			{
+			   if(dr.RowState!=DataRowState.Deleted &amp;&amp; BaseObject.CurrentRow.Row.RowState!=DataRowState.Detached)
+			   {
+			   		if(!dr.IsNull("WorkOrderReceiptItemId"))
+			   		{
+						str="select STRING_AGG(isnull(WO.WorkOrderNo,\'\')+\'-\'+ isnull(WO.UD_OrgTuru,\'\'),\'\') + \/\' [Sertifika] from MA_WorkOrder WO with(nolock) where WO.RecId=(select WorkOrderId from MA_WorkOrderItem with(nolock) where RecId="+dr["WorkOrderReceiptItemId"]+") group by WO.WorkOrderNo";
+						dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);
+						if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 &amp;&amp; !dt.Rows[0].IsNull("Sertifika") &amp;&amp; dt.Rows[0]["Sertifika"].ToString().Trim()!="")
+						{
+							sertifika = sertifika +" "+ dt.Rows[0][0].ToString();
+						dr.SetField&lt;|string|&gt;("UD_Sertifika",sertifika.ToString());
+						}
+					}
+					else
+					{
+					str="select STRING_AGG(isnull(WO.WorkOrderNo,\'\')+\'-\'+ isnull(WO.UD_OrgTuru,\'\'),\'\') + \'/\'  from MA_WorkOrder WO with(nolock) where WO.RecId in (select WorkOrderId from MA_WorkOrderItem where RecId in (select WorkOrderItemId from IM_ItemAllocation where InventoryReceiptItemId="+dr["RecId"]+")) group by WO.WorkOrderNo for xml path (\'\')";
+					dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",str);
+					
+						if(dt!=null &amp;&amp; dt.Rows.Count&gt;0  &amp;&amp; dt.Rows[0][0].ToString().Trim()!="")
+						{
+						sertifika = sertifika +" "+ dt.Rows[0][0].ToString();
+						dr.SetField&lt;|string|&gt;("UD_Sertifika",sertifika.ToString());
+						}
+					}
+				}
+			}
+		
+		}	      
+	}
+}</ScriptText>
+</ScriptDefinition>

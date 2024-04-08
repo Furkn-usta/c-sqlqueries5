@@ -1,0 +1,305 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TedarikGrubuUretimeCikisKontrol" Enabled="true" Priority="0" ScriptName="TedarikGrubuUretimeCikisKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="FurkanUsta" EntryDate="2023-04-03T00:00:00">
+      <Change>Tedarik gruplarına ve malzeme malzeme kontrol ederek üretime çıkış yapılırken bir önceki tedarik grubu üretime çıkış yapılmamış ise kayıt yapılmasını engeller.</Change>
+    </History>
+  </Histories>
+  <ScriptText>//Generated on 3.04.2023 13:22:07
+/*
+Tedarik gruplarına ve malzeme malzeme kontrol ederek üretime çıkış yapılırken bir önceki tedarik grubu üretime çıkış yapılmamış ise kayıt yapılmasını engeller.
+*/
+allocation_requirement_group = "1.Yükleme";
+function OnBeforePost(sender,ev)
+{		
+er_kod="";
+	if (BaseObject != null 
+	&amp;&amp; BaseObject.CurrentRow != null 
+	&amp;&amp; BaseObject.CurrentRow.Row != null 
+	&amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+	&amp;&amp; Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"]) == 140)
+	{
+	
+	if(BaseObject.CurrentRow.Row["AccessCode"].ToString()=="FABRIC")
+	er_kod="1";
+	
+	foreach(dr in BaseObject.Data.Tables["IM_ItemAllocation"].Select("InventoryId is not null and ItemVariant1Code is not null and WorkOrderItemId is not null"))
+		{
+		if(er_kod.ToString()=="1")
+				{
+					varyant_id = " select IV.RecId [rec] from IM_ItemVariant IV with (nolock)";
+					varyant_id += " where IV.InventoryId="+Convert.ToInt32(dr["InventoryId"])+" and IV.Variant1Id =";
+					varyant_id += "(select VI.RecId  from IM_VariantItem VI with (nolock) where VI.ItemCode = \'"+dr["ItemVariant1Code"].ToString()+"\')"; 
+					dt_varyant = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_varyant",varyant_id );
+					 	if(dt_varyant==null || dt_varyant.Rows.Count&lt;=0)
+							return null;
+            		
+				global:allocation_requirement_group = dr["RequirementGroup"].ToString();
+					
+				if(global:allocation_requirement_group=="2.Yükleme")
+            		{
+            	
+            		query_2 = " select count(isnull(IA.RecId,0)) [uc_2]  ";
+					query_2 += " from IM_ItemAllocation IA with (nolock) ";
+					query_2 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_2 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_2 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_2 += " where IA.RequirementGroup=\'1.Yükleme\' ";
+					query_2 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_2 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_2 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_2 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_2 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_2",query_2 );
+				 	if(dt_2==null || dt_2.Rows.Count&lt;0)
+						return null;
+						
+						prod_counter_dt_2= Convert.ToInt32(dt_2.Rows[0]["uc_2"]);
+						 if(prod_counter_dt_2&lt;=0)
+			        	{
+			                sender.ShowMessage("1.Tedarik Yükleme Çıkışı Yapılmadan 2. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+		          if(global:allocation_requirement_group=="3.Yükleme")
+            		{
+            	
+            		
+            		query_3 = " select count(isnull(IA.RecId,0)) [uc_3]  ";
+					query_3 += " from IM_ItemAllocation IA with (nolock) ";
+					query_3 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_3 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_3 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_3 += " where IA.RequirementGroup=\'2.Yükleme\' ";
+					query_3 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_3 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_3 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_3 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_3 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_3",query_3 );
+				 	if(dt_3==null || dt_3.Rows.Count&lt;0)
+						return null;
+						prod_counter_dt_3= Convert.ToInt32(dt_3.Rows[0]["uc_3"]);
+						 if(prod_counter_dt_3&lt;=0)
+			        	{
+			                sender.ShowMessage("2.Tedarik Yükleme Çıkışı Yapılmadan 3. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+		            
+		             if(global:allocation_requirement_group=="4.Yükleme")
+            		{
+            	
+            		
+            		query_4 = " select count(isnull(IA.RecId,0)) [uc_4]  ";
+					query_4 += " from IM_ItemAllocation IA with (nolock) ";
+					query_4 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_4 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_4 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_4 += " where IA.RequirementGroup=\'3.Yükleme\' ";
+					query_4 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_4 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_4 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_4 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_4 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_4",query_4 );
+				 	if(dt_4==null || dt_4.Rows.Count&lt;0)
+						return null;
+					
+						prod_counter_dt_4= Convert.ToInt32(dt_4.Rows[0]["uc_4"]);
+						 if(prod_counter_dt_4&lt;=0)
+			        	{
+			                sender.ShowMessage("3.Tedarik Yükleme Çıkışı Yapılmadan 4. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+					 if(global:allocation_requirement_group=="5.Yükleme")
+            		{
+            	
+            		
+            		query_5 = " select count(isnull(IA.RecId,0)) [uc_5]  ";
+					query_5 += " from IM_ItemAllocation IA with (nolock) ";
+					query_5 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_5 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_5 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_5 += " where IA.RequirementGroup=\'4.Yükleme\' ";
+					query_5 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_5 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_5 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_5 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_5 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_5",query_5 );
+				 	if(dt_5==null || dt_5.Rows.Count&lt;0)
+						return null;
+					
+						
+						prod_counter_dt_5= Convert.ToInt32(dt_5.Rows[0]["uc_5"]);
+						 if(prod_counter_dt_5&lt;=0)
+			        	{
+			                sender.ShowMessage("4.Tedarik Yükleme Çıkışı Yapılmadan 5. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+		            	 if(global:allocation_requirement_group=="6.Yükleme")
+            		{
+            	
+            		
+            		query_6 = " select count(isnull(IA.RecId,0)) [uc_6]  ";
+					query_6 += " from IM_ItemAllocation IA with (nolock) ";
+					query_6 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_6 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_6 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_6 += " where IA.RequirementGroup=\'5.Yükleme\' ";
+					query_6 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_6 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_6 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_6 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_6 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_6",query_6 );
+				 	if(dt_6==null || dt_6.Rows.Count&lt;0)
+						return null;
+					
+						
+						prod_counter_dt_6= Convert.ToInt32(dt_6.Rows[0]["uc_6"]);
+						 if(prod_counter_dt_6&lt;=0)
+			        	{
+			                sender.ShowMessage("5.Tedarik Yükleme Çıkışı Yapılmadan 6. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+		            	 if(global:allocation_requirement_group=="7.Yükleme")
+            		{
+            	
+            		
+            		query_7 = " select count(isnull(IA.RecId,0)) [uc_7]  ";
+					query_7 += " from IM_ItemAllocation IA with (nolock) ";
+					query_7 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_7 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_7 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_7 += " where IA.RequirementGroup=\'6.Yükleme\' ";
+					query_7 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_7 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_7 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_7 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_7 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_7",query_7 );
+				 	if(dt_7==null || dt_7.Rows.Count&lt;0)
+						return null;
+						
+						prod_counter_dt_7= Convert.ToInt32(dt_7.Rows[0]["uc_7"]);
+						 if(prod_counter_dt_7&lt;=0)
+			        	{
+			                sender.ShowMessage("6.Tedarik Yükleme Çıkışı Yapılmadan 7. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+		            	 if(global:allocation_requirement_group=="8.Yükleme")
+            		{
+            	
+            		
+            		query_8 = " select count(isnull(IA.RecId,0)) [uc_8]  ";
+					query_8 += " from IM_ItemAllocation IA with (nolock) ";
+					query_8 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_8 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_8 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_8 += " where IA.RequirementGroup=\'7.Yükleme\' ";
+					query_8 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_8 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_8 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_8 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_8 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_8",query_8 );
+				 	if(dt_8==null || dt_8.Rows.Count&lt;0)
+						return null;
+						
+						
+						prod_counter_dt_8= Convert.ToInt32(dt_8.Rows[0]["uc_8"]);
+						 if(prod_counter_dt_8&lt;=0)
+			        	{
+			                sender.ShowMessage("7.Tedarik Yükleme Çıkışı Yapılmadan 8. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+		            	 if(global:allocation_requirement_group=="9.Yükleme")
+            		{
+            	
+            		
+            		query_9 = " select count(isnull(IA.RecId,0)) [uc_9]  ";
+					query_9 += " from IM_ItemAllocation IA with (nolock) ";
+					query_9 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_9 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_9 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_9 += " where IA.RequirementGroup=\'8.Yükleme\' ";
+					query_9 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_9 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_9 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_9 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_9 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_9",query_9 );
+				 	if(dt_9==null || dt_9.Rows.Count&lt;0)
+						return null;
+						
+						prod_counter_dt_9= Convert.ToInt32(dt_9.Rows[0]["uc_9"]);
+						 if(prod_counter_dt_9&lt;=0)
+			        	{
+			                sender.ShowMessage("8.Tedarik Yükleme Çıkışı Yapılmadan 9. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+		            	 if(global:allocation_requirement_group=="10.Yükleme")
+            		{
+            	
+            		
+            		query_10 = " select count(isnull(IA.RecId,0)) [uc_10]  ";
+					query_10 += " from IM_ItemAllocation IA with (nolock) ";
+					query_10 += " left join IM_ItemVariant IV with (nolock) on (IV.RecId = IA.InventoryVariantId) ";
+					query_10 += " left join IM_VariantItem VI with (nolock) on (VI.RecId = IV.Variant1Id) ";
+					query_10 += " left join IM_VariantItem VI2 with (nolock) on (VI2.RecId = IV.Variant2Id) ";
+					query_10 += " where IA.RequirementGroup=\'9.Yükleme\' ";
+					query_10 += " and IA.InventoryId=\'"+dr["InventoryId"].ToString()+"\' ";
+					query_10 += " and IA.WorkOrderItemId=\'"+dr["WorkOrderItemId"].ToString()+"\' ";
+					query_10 += " and IA.InventoryVariantId=\'"+dt_varyant.Rows[0]["rec"].ToString()+"\' ";
+					query_10 += " and IA.InventoryReceiptType = 140 ";
+					 
+					dt_10 = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_10",query_10 );
+				 	if(dt_10==null || dt_10.Rows.Count&lt;0)
+						return null;
+						
+						prod_counter_dt_10= Convert.ToInt32(dt_10.Rows[0]["uc_10"]);
+						 if(prod_counter_dt_10&lt;=0)
+			        	{
+			                sender.ShowMessage("9.Tedarik Yükleme Çıkışı Yapılmadan 10. Tedarik Yükleme Çıkışı Yapılamaz.. {scr:TedarikGrubuUretimeCikisKontrol}");
+			                ev.Cancel=true;
+			                return null;
+				        }
+		            }
+		            
+            	}
+			}
+		}
+}
+
+
+
+</ScriptText>
+</ScriptDefinition>

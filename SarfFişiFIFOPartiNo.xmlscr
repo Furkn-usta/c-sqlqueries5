@@ -1,0 +1,129 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SarfFişiFIFOPartiNo" Enabled="false" Priority="0" ScriptName="SarfFişiFIFOPartiNo">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>/*
+  Örme üretim emrine bağli üretim hareketinden otomatik oluşturulan sarf fişine iplik parti numarasini Fifo algoritmasiyla otomatik taşinmasi sağlaniyor.  
+*/
+function OnBeforePost(sender,eventArg)
+{
+    if(BaseObject!=null 
+       &amp;&amp; BaseObject.CurrentRow!=null 
+       &amp;&amp; BaseObject.CurrentRow.Row!=null  
+       &amp;&amp; BaseObject.CurrentRow.Row.RowState!=DataRowState.Deleted 
+       &amp;&amp; BaseObject.CurrentRow.Row.RowState!=DataRowState.Detached
+       &amp;&amp; BaseObject.IsNewRecord 
+       &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("ReceiptType") 
+       &amp;&amp; Convert.ToInt16(BaseObject.CurrentRow.Row["ReceiptType"])==130
+       &amp;&amp; !BaseObject.CurrentRow.Row.IsNull("OutWarehouseId"))
+    { 
+        l_sb = new StringBuilder();
+        l_warehouseid = Convert.ToInt32(BaseObject.CurrentRow.Row["OutWarehouseId"]);
+        l_workplaceid = 0;
+        if(!BaseObject.CurrentRow.Row.IsNull("WorkPlaceId"))
+            l_workplaceid =Convert.ToInt32(BaseObject.CurrentRow.Row["WorkPlaceId"]);
+        foreach(dr in BaseObject.Data.Tables["IM_ReceiptItem"].Select("InventoryId is not null and WorkOrderReceiptItemId is not null "))
+        {
+            if(dr.RowState!=DataRowState.Deleted &amp;&amp; dr.RowState!=DataRowState.Detached)
+            { 
+                l_variant1 = string.Empty;
+                if(!dr.IsNull("ItemVariant1Code"))
+                   l_variant1 = dr["ItemVariant1Code"].ToString();
+                l_variant2 = string.Empty;
+                if(!dr.IsNull("ItemVariant2Code"))
+                   l_variant2 = dr["ItemVariant2Code"].ToString();
+                l_unitId = 0;
+                if(!dr.IsNull("UnitId"))
+                   l_unitId = Convert.ToInt32(dr["UnitId"]);
+                                 
+	            l_sb.Clear();	            
+	            l_sb.AppendLine("declare @WorkOrderItemId bigint,@CompanyId int,@WorkPlaceId int,@WarehouseId int ,@UnitId int,@Variant1 UdtCode ,@Variant2 UdtCode,@InventoryId bigint,@TotalOutQuantity decimal(28,8)");
+	            l_sb.AppendLine("select @CompanyId="+BaseObject.ActiveSession.Company.RecId);
+	            l_sb.AppendLine("select @WorkPlaceId="+l_workplaceid);
+				l_sb.AppendLine("select @WarehouseId ="+l_warehouseid);
+				l_sb.AppendLine("select @WorkOrderItemId ="+Convert.ToInt64(dr["WorkOrderReceiptItemId"]));
+				l_sb.AppendLine("select @InventoryId="+Convert.ToInt64(dr["InventoryId"]));
+				l_sb.AppendLine("select @UnitId ="+l_unitId);
+				l_sb.AppendLine("select @Variant1 =\'"+l_variant1+"\'");
+				l_sb.AppendLine("select @Variant2 =\'"+l_variant2+"\'");
+				l_sb.AppendLine("select @TotalOutQuantity = isnull((select  sum(isnull(ri.NetQuantity,0))  ");
+				l_sb.AppendLine("from IM_Receipt r with (nolock) ");
+				l_sb.AppendLine("left join IM_ReceiptItem ri with (nolock) on r.RecId = ri.InventoryReceiptId ");
+				l_sb.AppendLine("left join IM_ReceiptItemVariant riv with (nolock) on riv.InventoryReceiptItemId = ri.RecId ");
+				l_sb.AppendLine("left join IM_ItemVariant iv with (nolock) on iv.RecId = riv.InventoryVariantId");
+				l_sb.AppendLine("left join IM_VariantItem vi with (nolock) on vi.RecId = iv.Variant1Id");
+				l_sb.AppendLine("left join IM_VariantItem vii with (nolock) on vii.RecId = iv.Variant2Id");
+				l_sb.AppendLine("left join MD_UnitSetItem u with (nolock) on u.RecId=ri.UnitId");
+				l_sb.AppendLine("where ri.ItemType in (1,5,10,11,12,13) ");
+				l_sb.AppendLine("and (r.ReceiptType &gt; 100 or r.ReceiptType = 4 or r.ReceiptType = 17) ");
+				l_sb.AppendLine("and (r.ReceiptType not in (128,191,192,193,194,199)) ");
+				l_sb.AppendLine("and (r.IsDeleted = 0 or r.IsDeleted is null)  and (r.IsDeleted = 0 or r.IsDeleted is null)"); 
+				l_sb.AppendLine("and r.ReceiptType &lt;&gt; 200  ");
+				l_sb.AppendLine("and r.CompanyId = @CompanyId");
+				l_sb.AppendLine("and isnull(r.WorkplaceId,0)=case when @WorkPlaceId&gt;0 then @WorkPlaceId  else 0 end ");
+				l_sb.AppendLine("and isnull(ri.UnitId,0) = case when @UnitId&gt;0 then @UnitId else 0 end ");
+				l_sb.AppendLine("and ri.InventoryId = @InventoryId");
+				l_sb.AppendLine("and r.OutWarehouseId = @WarehouseId ");
+				l_sb.AppendLine("and (ri.WorkOrderReceiptItemId = @WorkOrderItemId or ri.RecId in (select ia.InventoryReceiptItemId from IM_ItemAllocation ia with (nolock) where ia.WorkOrderItemId = @WorkOrderItemId ) )");
+				l_sb.AppendLine("and ri.RecId&lt;&gt;"+Convert.ToInt64(dr["RecId"]));
+				l_sb.AppendLine("and isnull(vi.ItemCode,\'\') = case when @Variant1&lt;&gt;\'\' then @Variant1  else \'\' end ");
+				l_sb.AppendLine("and isnull(vii.ItemCode,\'\') = case when @Variant2&lt;&gt;\'\' then @Variant2 else \'\' end ),0)");
+				l_sb.AppendLine("if object_id(\'tempdb..#PartyFIFO\') is not null drop table #PartyFIFO");
+				l_sb.AppendLine("create table #PartyFIFO (RecId bigint identity(1,1),InventoryReceiptItemId bigint,ReceiptDate datetime,PartyNo nvarchar(250) collate database_default,Quantity decimal(28,8))");
+				l_sb.AppendLine("insert into #PartyFIFO (InventoryReceiptItemId,ReceiptDate,PartyNo,Quantity)");
+				l_sb.AppendLine("select ri.RecId InventoryReceiptItemId,r.ReceiptDate,ri.PartyNo,isnull(ri.NetQuantity,0) Quantity");
+				l_sb.AppendLine("from IM_Receipt r with (nolock) ");
+				l_sb.AppendLine("left join IM_ReceiptItem ri with (nolock) on r.RecId = ri.InventoryReceiptId ");
+				l_sb.AppendLine("left join IM_ReceiptItemVariant riv with (nolock) on riv.InventoryReceiptItemId = ri.RecId ");
+				l_sb.AppendLine("left join IM_ItemVariant iv with (nolock) on iv.RecId = riv.InventoryVariantId");
+				l_sb.AppendLine("left join IM_VariantItem vi with (nolock) on vi.RecId = iv.Variant1Id");
+				l_sb.AppendLine("left join IM_VariantItem vii with (nolock) on vii.RecId = iv.Variant2Id");
+				l_sb.AppendLine("left join MD_UnitSetItem u with (nolock) on u.RecId=ri.UnitId");
+				l_sb.AppendLine("where ri.ItemType in (1,5,10,11,12,13) ");
+				l_sb.AppendLine("and isnull(ri.NetQuantity,0) &lt;&gt; 0 ");
+				l_sb.AppendLine("and (r.ReceiptType &lt; 100 or r.ReceiptType = 123 or r.ReceiptType = 200) ");
+				l_sb.AppendLine("and (r.ReceiptType not in (28,91,92,93,94)) ");
+				l_sb.AppendLine("and r.ReceiptType &lt;&gt; 200 ");
+				l_sb.AppendLine("and r.CompanyId = @CompanyId");
+				l_sb.AppendLine("and isnull(r.WorkplaceId,0)=case when @WorkPlaceId&gt;0 then @WorkPlaceId  else 0 end"); 
+				l_sb.AppendLine("and isnull(ri.UnitId,0) = case when @UnitId&gt;0 then @UnitId else 0 end ");
+				l_sb.AppendLine("and ri.InventoryId = @InventoryId");
+				l_sb.AppendLine("and ri.InWarehouseId = @WarehouseId");
+				l_sb.AppendLine("and (ri.WorkOrderReceiptItemId = @WorkOrderItemId or ri.RecId in (select ia.InventoryReceiptItemId from IM_ItemAllocation ia with (nolock) where ia.WorkOrderItemId = @WorkOrderItemId ) )");
+				l_sb.AppendLine("and isnull(vi.ItemCode,\'\') = case when @Variant1&lt;&gt;\'\' then @Variant1  else \'\' end ");
+				l_sb.AppendLine("and isnull(vii.ItemCode,\'\') = case when @Variant2&lt;&gt;\'\' then @Variant2  else \'\' end ");
+				l_sb.AppendLine("and isnull(ri.PartyNo,\'\')&lt;&gt;\'\'");
+				l_sb.AppendLine("declare @PartyNo UdtName,@Quantity decimal(28,8)");
+				l_sb.AppendLine("declare @FifoPartyNo UdtName,@TotalInQuantity decimal(28,8)");
+				l_sb.AppendLine("select @TotalInQuantity = 0;");
+				l_sb.AppendLine("select @FifoPartyNo =\'\';");
+				l_sb.AppendLine("declare l_fifo_cursor cursor for");
+				l_sb.AppendLine("select PartyNo,Quantity from #PartyFIFO  order by ReceiptDate asc");
+				l_sb.AppendLine("open l_fifo_cursor");
+				l_sb.AppendLine("fetch next from l_fifo_cursor into @PartyNo,@Quantity");
+				l_sb.AppendLine("while @@FETCH_STATUS = 0  ");
+				l_sb.AppendLine("begin  ");
+				l_sb.AppendLine("     select @TotalInQuantity = @TotalInQuantity + @Quantity");
+				l_sb.AppendLine("	  if(@TotalInQuantity &gt; @TotalOutQuantity)");
+				l_sb.AppendLine("	  begin");
+				l_sb.AppendLine("	     select @FifoPartyNo = @PartyNo;");
+				l_sb.AppendLine("		 break;");
+				l_sb.AppendLine("	  end");
+				l_sb.AppendLine("     fetch next from l_fifo_cursor into @PartyNo,@Quantity ");
+				l_sb.AppendLine("end ");
+				l_sb.AppendLine("close l_fifo_cursor");
+				l_sb.AppendLine("deallocate l_fifo_cursor ");
+				l_sb.AppendLine("select @FifoPartyNo FifoPartyNo");
+				l_sb.AppendLine("if object_id(\'tempdb..#PartyFIFO\') is not null drop table #PartyFIFO");
+				
+	            dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",l_sb.ToString());	
+		        if(dt!=null &amp;&amp; dt.Rows.Count&gt;0 &amp;&amp; !dt.Rows[0].IsNull("FifoPartyNo") &amp;&amp; dt.Rows[0]["FifoPartyNo"].ToString().Trim()!=string.Empty)
+		            dr.SetField&lt;|String|&gt;("PartyNo",dt.Rows[0]["FifoPartyNo"].ToString());
+		    } 
+        }
+	}
+}</ScriptText>
+</ScriptDefinition>

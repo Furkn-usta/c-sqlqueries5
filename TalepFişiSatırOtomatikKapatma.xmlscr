@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TalepFişiSatırOtomatikKapatma" Enabled="true" Priority="0" ScriptName="TalepFişiSatırOtomatikKapatma">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="AfterSucceededPost" FunctionName="OnAfterSucceededPost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 26.01.2024 18:35:55 TalepFişiSatırOtomatikKapatma
+function OnAfterSucceededPost(sender, e)
+{   	
+    if(BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null
+	|| BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+	|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1
+	  ) 
+		return null;
+	
+		 // MessageBox.Show("asd");
+	foreach(ri in BaseObject.Data.Tables["IM_ReceiptItem"].Select("OrderReceiptItemId is not null and InventoryId is not null"))
+	{	
+        irsaliye_miktar_ = Convert.ToDecimal(ri["Quantity"]);
+           query= " select isnull(DRI.IsClosed,0) [talep_durum],isnull(DRI.Quantity,0) [talep_miktar],isnull(DRI.RecId   ,0) [talep_rec] from IM_OrderReceiptItem ORI with (nolock) ";
+	       query += " left join IM_DemandReceiptItem DRI with (nolock) on DRI.RecId=ORI.DemandReceiptItemId ";
+	       query += " where DRI.InventoryId=\'"+ri["InventoryId"].ToString()+"\' and ORI.RecId=\'"+ri["OrderReceiptItemId"].ToString()+"\'";
+	      
+		  //MessageBox.Show(query.ToString());
+		   dt = UtilityFunctions.GetDataTableList(BaseObject.ActiveSession.DBInfo.DBProvider, BaseObject.ActiveSession.DBInfo.Connection, null, "dt", query);
+		    
+			if(dt == null || dt.Rows.Count &lt;= 0)
+				return null; 
+             talep_durum_ = dt.Rows[0]["talep_durum"].ToString();
+             talep_miktar_ = Convert.ToDecimal(dt.Rows[0]["talep_miktar"]);
+             talep_rec_ = dt.Rows[0]["talep_rec"].ToString();
+             
+             
+		if(Convert.ToDecimal(ri["Quantity"]) == Convert.ToDecimal(talep_miktar_))
+        {
+         str = 	"update IM_DemandReceiptItem set IsClosed=1 where RecId =\'"+talep_rec_.ToString()+"\'";
+	     UtilityFunctions.SqlCustomScalarQuery(BaseObject.Connection,null,str.ToString());   
+        }
+    }
+	
+	
+}
+/*
+DemandReceiptEN
+
+//Generated on 28.12.2023 09:22:45 OrderNumuneAktarımı
+
+function OnAfterSucceededPost(sender, ev)
+{
+	if(BaseObject==null 
+	|| BaseObject.CurrentRow==null
+	|| BaseObject.CurrentRow.Row==null
+	|| BaseObject.CurrentRow.Row.IsNull("IsSample")
+	|| BaseObject.CurrentRow.Row.IsNull("RecId")
+	)
+		return null;
+
+	str = 	"update MA_WorkOrder set UD_IsSample=\'"+Convert.ToInt16(BaseObject.CurrentRow.Row["IsSample"])+"\' where RecId =\'"+BaseObject.CurrentRow.Row["RecId"].ToString()+"\')";
+	UtilityFunctions.SqlCustomScalarQuery(BaseObject.Connection,null,str.ToString());
+	
+}
+*/</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Seri Kart Transfer" Enabled="true" Priority="0" ScriptName="Seri Kart Transfer">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="AfterGet" FunctionName="OnAfterGet" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="InventoryReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Özel durum için yazildi
+function OnAfterGet(sender,eventArg)
+{
+	BaseObject.ActiveSession.ParamService.GetParameterClass&lt;|InventoryParameters|&gt;().SerialTransactionControl = 5;	
+}
+
+function OnBeforePost(sender,eventArg)
+{
+	BaseObject.ActiveSession.ParamService.GetParameterClass&lt;|InventoryParameters|&gt;().SerialTransactionControl = 5;	
+}</ScriptText>
+</ScriptDefinition>

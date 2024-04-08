@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisMevcutDeğilseSipEngelleme" Enabled="true" Priority="0" ScriptName="TahsisMevcutDeğilseSipEngelleme">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 17.05.2023 12:02:37
+
+function OnBeforePost(sender, eventArg)
+{
+		if(BaseObject == null 
+		|| BaseObject.CurrentRow == null 
+		|| BaseObject.CurrentRow.Row == null
+		|| BaseObject.CurrentRow.Row.IsNull("ReceiptType") 
+		|| Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1 ) 
+		return null;
+/*
+		if(BaseObject.ActiveSession.User.RecId == 1)  // Kullanıcı RecId 1 ise çalışmasın
+			return null;
+
+		if(BaseObject.ActiveSession.Company.RecId == 1) //Şirket RecId 1 ise çalışmasın
+			return null;
+*/
+		foreach(dr in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select(""))
+			{
+			  rows = dr.GetChildRows("FK_IM_ItemAllocation_IM_OrderReceiptItem");
+			
+			  if(rows==null || rows.Length&lt;=0 )
+			  {
+			     BaseObject.ShowMessage("Tahsis Mevcut Olmadan Kayıt Yapılamaz. {scr:TahsisMevcutDeğilseSipEngelleme}");
+			     eventArg.Cancel=true;
+			     return null;
+			  }			  
+			}
+}</ScriptText>
+</ScriptDefinition>

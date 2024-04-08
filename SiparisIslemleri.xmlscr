@@ -1,0 +1,698 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SiparisIslemleri" Enabled="true" Priority="0" ScriptName="SiparisIslemleri">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="OrderReceiptVM" />
+    <Event Enabled="true" ObjectName="InventoryReceiptVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="InventoryReceiptVM" />
+    <Event Enabled="true" ObjectName="InvoiceVM" />
+    <Event Enabled="true" EventName="ViewLoaded" FunctionName="OnViewLoaded" ObjectName="InvoiceVM" />
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//07.01.2022 - Ersev Çanta - Bünyamin Bey
+//sipariş satırları ve indirim oranları üzerinde toplu düzenleme işlemleri
+/*
+
+RuntimeHost.SetSettingItem("UnsubscribeAllEvents", false);
+
+function ValidateEntity()
+{
+	if(BaseObject == null || BaseObject.ActiveEntity == null || BaseObject.ActiveEntity.Data == null
+		|| BaseObject.ActiveEntity.Data.Tables == null || (!BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem") &amp;&amp; !BaseObject.ActiveEntity.Data.Tables.Contains("IM_ReceiptItem")))
+		return String.Empty;
+	
+	tableName = "IM_ReceiptItem";
+	if(BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem"))
+		tableName = "IM_OrderReceiptItem";
+	return tableName;
+}
+
+function OnDiscountButtonsClick(sender, ev)
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+	
+	txtcurrentdiscount = BaseObject.FindControl("txtcurrentdiscount");
+	txtnewdiscount = BaseObject.FindControl("txtnewdiscount");
+	
+	if(txtcurrentdiscount == null || txtnewdiscount == null)
+		return null;
+	
+	filter = "ItemType=1";
+	subfilter = getFilter();
+	
+	if(subfilter != String.Empty)
+		filter += " and " + subfilter;
+	
+	if(sender.Name.Contains("Add") &amp;&amp; Convert.ToDecimal(txtcurrentdiscount.PercentValue)&gt;0m)
+	{
+		foreach(x in BaseObject.ActiveEntity.Data.Tables[tableName].Select(filter))
+		{
+	         l_ItemPiece = BaseObject.ActiveEntity.Data.Tables[tableName].NewRow(); 
+	         l_ItemPiece.SetParentRow(x); 
+	         BaseObject.ActiveEntity.Data.Tables[tableName].Rows.Add(l_ItemPiece); 
+	         
+	         l_ItemPiece.SetField&lt;|int|&gt;("ItemType", 50);
+	         l_ItemPiece.SetField&lt;|decimal|&gt;("DiscountRate", Convert.ToDecimal(txtcurrentdiscount.PercentValue)); 
+	         if(!DBNull.Value.Equals(x["ReceiptType"]))
+	                   l_ItemPiece.SetField&lt;|Int16|&gt;("ReceiptType", Convert.ToInt16(x["ReceiptType"]));
+	         if(!DBNull.Value.Equals(x["ReceiptSubType"]))
+	                   l_ItemPiece.SetField&lt;|Int16|&gt;("ReceiptSubType", Convert.ToInt16(x["ReceiptSubType"]));
+	         if(BaseObject.ActiveEntity.Data.Tables[tableName].Columns.Contains("OrderReceiptId") &amp;&amp; !DBNull.Value.Equals(x["OrderReceiptId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("OrderReceiptId",Convert.ToInt32(x["OrderReceiptId"]));
+	         if(BaseObject.ActiveEntity.Data.Tables[tableName].Columns.Contains("InventoryReceiptId") &amp;&amp; !DBNull.Value.Equals(x["InventoryReceiptId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("InventoryReceiptId", Convert.ToInt32(x["InventoryReceiptId"]));
+	         if(!DBNull.Value.Equals(x["ReceiptDate"]))
+	                   l_ItemPiece.SetField&lt;|DateTime|&gt;("ReceiptDate", Convert.ToDateTime(x["ReceiptDate"]));
+	         if(!DBNull.Value.Equals(x["CostCenterId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("CostCenterId", Convert.ToInt32(x["CostCenterId"]));
+	         if(BaseObject.ActiveEntity.Data.Tables[tableName].Columns.Contains("WarehouseId"))
+	         {
+	         	if(!DBNull.Value.Equals(x["WarehouseId"]))
+	            	l_ItemPiece.SetField&lt;|int|&gt;("WarehouseId", Convert.ToInt32(x["WarehouseId"]));
+	         }else
+	         {
+	         	if(!DBNull.Value.Equals(x["InWarehouseId"]))
+	            	l_ItemPiece.SetField&lt;|int|&gt;("InWarehouseId", Convert.ToInt32(x["InWarehouseId"]));
+	         	if(!DBNull.Value.Equals(x["OutWarehouseId"]))
+	            	l_ItemPiece.SetField&lt;|int|&gt;("OutWarehouseId", Convert.ToInt32(x["OutWarehouseId"]));
+	         }
+	         
+	         if(!DBNull.Value.Equals(x["EmployeeId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("EmployeeId", Convert.ToInt32(x["EmployeeId"]));
+	         if(!DBNull.Value.Equals(x["CustomerOrderNo"]))
+	                   l_ItemPiece.SetField&lt;|string|&gt;("CustomerOrderNo",x["CustomerOrderNo"].ToString());
+	
+	         l_ItemPiece.SetField&lt;|bool|&gt;("IsTaxExempted", false); 
+	         l_ItemPiece.SetField&lt;|decimal|&gt;("ForexRate", 0.0m); 
+	         l_ItemPiece.SetField&lt;|decimal|&gt;("ForexUnitPrice", 0.0m); 
+	         //l_ItemPiece.SetField&lt;|bool|&gt;("IsRejected", false);
+	         l_ItemPiece.SetField&lt;|bool|&gt;("IsDeleted", false);
+	         l_ItemPiece.SetField&lt;|Byte|&gt;("ControlCode", (Byte)0);
+	         l_ItemPiece.SetField&lt;|DateTime|&gt;("InsertedAt", DateTime.Now);
+	         l_ItemPiece.SetField&lt;|int|&gt;("InsertedBy", BaseObject.ActiveSession.User.RecId);
+		}
+		txtcurrentdiscount.PercentValue=0d;
+	}
+	
+	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("ItemType = 50"))
+	{
+		if(!ri.IsNull("DiscountRate") &amp;&amp; Convert.ToDouble(ri["DiscountRate"]) == txtcurrentdiscount.PercentValue)
+		{
+			if(sender.Name.Contains("Up"))
+				ri.SetField&lt;|decimal|&gt;("DiscountRate", Convert.ToDecimal(txtnewdiscount.PercentValue));
+			else if(sender.Name.Contains("Rem"))
+				ri.Delete();
+		}
+	}
+}
+
+function OnQtyButtonsClick(sender, ev)
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	txtQuantity = BaseObject.FindControl("txtQuantity");
+	if(txtQuantity == null)
+		return null;
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+		return null;
+	
+	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select(filter))
+	{
+		baseQty = 0m;
+		if(!ri.IsNull("Quantity"))
+			baseQty = Convert.ToDecimal(ri["Quantity"]);
+		
+		if(sender.Name.Contains("Up"))
+			ri.SetField&lt;|decimal|&gt;("Quantity", Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Inc"))
+			ri.SetField&lt;|decimal|&gt;("Quantity", baseQty + Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Dec") &amp;&amp; (baseQty - Convert.ToDecimal(txtQuantity.Value)) &gt; 0m)
+			ri.SetField&lt;|decimal|&gt;("Quantity", baseQty - Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Remove"))
+			ri.Delete();
+	}
+	
+	updateSum();
+}
+
+function OnComboBoxSelectionChanged(sender, ev)
+{
+	control = sender.Name.Replace("cb", "cls");
+	
+	cls = BaseObject.FindControl(control);
+
+	if(cls == null)
+		return null;
+	
+	if(sender != null &amp;&amp; sender.SelectedItems != null &amp;&amp; sender.SelectedItems.Count &gt; 0)
+		cls.Visibility = Visibility.Visible;
+	else
+		cls.Visibility = Visibility.Hidden;
+		
+	updateSum();
+}
+
+function ClsOnPreviewMouseDown(sender, ev)
+{	
+	control = sender.Name.Replace("cls", "cb");
+	
+	cb = BaseObject.FindControl(control);
+	if(cb != null &amp;&amp; cb.SelectedItems != null &amp;&amp; cb.SelectedItems.Count &gt; 0)
+		cb.SelectedItems.Clear();
+}
+
+function SetLabelPrice(ctrl, val)
+{
+	SetLabelPriceIn(ctrl,val,-1);
+}
+
+function SetLabelPriceIn(ctrl, val, val2)
+{
+	price=0.00m;
+	if(!DBNull.Value.Equals(val))
+		price = Convert.ToDecimal(val);
+	
+	lblTarget = BaseObject.FindControl(ctrl);
+	if(lblTarget != null)
+	{
+		if(val2 &lt;= 0)
+			lblTarget.Content = ": " + String.Format("{0:N2}", price);
+		else
+			lblTarget.Content = ": " + String.Format("{0:N2}   ({1:D} Kalem)", price, Convert.ToInt32(val2));
+	}
+}
+
+function AddOnClickCb(ctrl, cb)
+{
+	btnSender = BaseObject.FindControl(ctrl);
+	if(btnSender != null)
+		btnSender.Click += cb;
+}
+
+function getFilter()
+{
+	cbSubGroup = BaseObject.FindControl("cbSubGroup");
+	cbMark = BaseObject.FindControl("cbMark");
+	
+    filter = String.Empty;
+    
+    if(cbSubGroup != null &amp;&amp; cbSubGroup.SelectedItems != null &amp;&amp; cbSubGroup.SelectedItems.Count &gt; 0)
+    {
+            filter += "UD_AltGrup in (\'sql_error_pred\'";
+            foreach(subG in cbSubGroup.SelectedItems)
+                filter += ",\'" + subG.ToString() + "\'";
+            filter += ")";
+        }
+
+    if(cbMark != null &amp;&amp; cbMark.SelectedItems != null &amp;&amp; cbMark.SelectedItems.Count &gt; 0)
+    {
+    if(filter != "")
+    filter += " and ";
+    
+    filter += "UD_Marka in (\'sql_error_pred\'";
+            foreach(mark in cbMark.SelectedItems)
+                filter += ",\'" + mark.ToString() + "\'";
+            filter += ")";
+    }
+	
+	return filter;
+}
+
+function updateSum()
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	targetDataTable = BaseObject.ActiveEntity.Data.Tables[tableName];
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+	{
+		SetLabelPrice("lblsumQuantity", 0);
+		SetLabelPrice("lblsumItem", 0);
+		SetLabelPrice("lblsumDiscount", 0);
+		SetLabelPrice("lblsumNetItem", 0);
+		SetLabelPrice("lblsumVat", 0);
+		SetLabelPrice("lblsum", 0);
+	}else
+	{
+		itemcount = targetDataTable.Compute("Count(Quantity)",filter);
+		qty = targetDataTable.Compute("SUM(Quantity)",filter);
+		itemtotal = targetDataTable.Compute("SUM(ItemTotal)",filter);
+		discountstotal = targetDataTable.Compute("SUM(DiscountsTotal)",filter);
+		netitemtotal = targetDataTable.Compute("SUM(NetItemTotal)",filter);
+		vatamount = targetDataTable.Compute("SUM(VatAmount)",filter);
+		sum = targetDataTable.Compute("SUM(UD_KdvliTutar)",filter);
+		
+		SetLabelPriceIn("lblsumQuantity", qty, itemcount);
+		SetLabelPrice("lblsumItem", itemtotal);
+		SetLabelPrice("lblsumDiscount", discountstotal);
+		SetLabelPrice("lblsumNetItem", netitemtotal);
+		SetLabelPrice("lblsumVat", vatamount);
+		SetLabelPrice("lblsum", sum);
+	}
+}
+
+function OnViewLoaded(sender, ev)
+{
+	if(BaseObject == null) return null;
+	
+	AddOnClickCb("btnUpdateDiscount", OnDiscountButtonsClick);
+	AddOnClickCb("btnAddDiscount", OnDiscountButtonsClick);
+	AddOnClickCb("btnRemoveDiscount", OnDiscountButtonsClick);
+	AddOnClickCb("btnRemoveRecords", OnQtyButtonsClick);
+	AddOnClickCb("btnUpdateQuantity",OnQtyButtonsClick);
+	AddOnClickCb("btnDecreaseQuantity", OnQtyButtonsClick);
+	AddOnClickCb("btnIncreaseQuantity", OnQtyButtonsClick);
+
+	clsMark = BaseObject.FindControl("clsMark");
+	clsSubGroup = BaseObject.FindControl("clsSubGroup");
+	
+	if(clsMark != null)
+		clsMark.PreviewMouseDown += ClsOnPreviewMouseDown;
+		
+	if(clsSubGroup != null)
+		clsSubGroup.PreviewMouseDown += ClsOnPreviewMouseDown;
+
+	cbSubGroup = BaseObject.FindControl("cbSubGroup");
+	cbMark = BaseObject.FindControl("cbMark");
+
+	if(cbSubGroup != null &amp;&amp; cbSubGroup.Items.Count == 0)
+	{
+		groupsinusage = new List&lt;|string|&gt;();
+		
+		tableName = ValidateEntity();
+		
+		if(tableName != String.Empty)
+		{
+			cbSubGroup.Items.Add("");
+	     	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("UD_AltGrup IS NOT NULL"))
+				groupsinusage.Add(ri["UD_AltGrup"].ToString());
+	        
+	        uniqgroups = groupsinusage.Distinct&lt;|string|&gt;().ToList&lt;|string|&gt;();
+	        foreach(group in uniqgroups)
+	        	cbSubGroup.Items.Add(group);
+	    	cbSubGroup.SelectionChanged += OnComboBoxSelectionChanged;
+		}
+	}
+	
+	if(cbMark != null &amp;&amp; cbMark.Items.Count == 0)
+	{
+		marksinusage = new List&lt;|string|&gt;();
+		
+		tableName = ValidateEntity();
+		
+		if(tableName != String.Empty)
+		{
+			cbMark.Items.Add("");
+	     	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("UD_Marka IS NOT NULL"))
+				marksinusage.Add(ri["UD_Marka"].ToString());
+	        
+	        uniqmarks = marksinusage.Distinct&lt;|string|&gt;().ToList&lt;|string|&gt;();
+	        foreach(mark in uniqmarks)
+	        	cbMark.Items.Add(mark);
+	    	cbMark.SelectionChanged += OnComboBoxSelectionChanged;
+		}
+	}
+}
+
+function OnColumnChanged(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || !ev.Row.Table.Columns.Contains("InventoryId") || !ev.Row.Table.Columns.Contains("UD_AltGrup") || !ev.Row.Table.Columns.Contains("UD_Marka"))
+		return null;
+	
+	if(ev.Column.ColumnName != "InventoryId" || ev.Row.IsNull(ev.Column))
+		return null;
+	
+	r = UtilityFunctions.GetDataTableList(BaseObject.ActiveSession.DBInfo.DBProvider, BaseObject.ActiveSession.DBInfo.Connection, null, "r", "select i.UD_AltGrup alt,(select m.MarkName from IM_Mark m where m.RecId= i.MarkId) as mark from IM_Item i WHERE RecId = " + ev.Row[ev.Column].ToString());
+	
+	if(r == null || r.Rows.Count &lt;= 0)
+		return null;
+	
+	if(ev.Row["UD_Marka"].ToString() != r.Rows[0]["mark"])
+		ev.Row.SetField&lt;|string|&gt;("UD_Marka", r.Rows[0]["mark"]);
+		
+	if(ev.Row["UD_AltGrup"].ToString() != r.Rows[0]["alt"].ToString())
+		ev.Row.SetField&lt;|string|&gt;("UD_AltGrup", r.Rows[0]["alt"]);
+}
+
+*/
+
+//07.01.2022 - Ersev Çanta - Bünyamin Bey
+//sipariş satırları ve indirim oranları üzerinde toplu düzenleme işlemleri
+
+RuntimeHost.SetSettingItem("UnsubscribeAllEvents", false);
+
+function ValidateEntity()
+{
+	
+    if(BaseObject == null 
+    || BaseObject.ActiveEntity == null 
+    || BaseObject.ActiveEntity.Data == null 
+	|| BaseObject.ActiveEntity.Data.Tables == null 
+    || (!BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem") &amp;&amp; !BaseObject.ActiveEntity.Data.Tables.Contains("IM_ReceiptItem")))
+		return String.Empty;
+    
+	tableName = "IM_ReceiptItem";
+	if(BaseObject.ActiveEntity.Data.Tables.Contains("IM_OrderReceiptItem"))
+		tableName = "IM_OrderReceiptItem";
+	return tableName;
+}
+
+function OnDiscountButtonsClick(sender, ev)
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+	
+	txtcurrentdiscount = BaseObject.FindControl("txtcurrentdiscount");
+	txtnewdiscount = BaseObject.FindControl("txtnewdiscount");
+	
+	if(txtcurrentdiscount == null || txtnewdiscount == null)
+		return null;
+	
+	filter = "ItemType=1";
+	subfilter = getFilter();
+	
+	if(subfilter != String.Empty)
+		filter += " and " + subfilter;
+	
+	if(sender.Name.Contains("Add") &amp;&amp; Convert.ToDecimal(txtcurrentdiscount.PercentValue)&gt;0m)
+	{
+		foreach(x in BaseObject.ActiveEntity.Data.Tables[tableName].Select(filter))
+		{
+	         l_ItemPiece = BaseObject.ActiveEntity.Data.Tables[tableName].NewRow(); 
+	         l_ItemPiece.SetParentRow(x); 
+	         BaseObject.ActiveEntity.Data.Tables[tableName].Rows.Add(l_ItemPiece); 
+	         
+	         l_ItemPiece.SetField&lt;|int|&gt;("ItemType", 50);
+	         l_ItemPiece.SetField&lt;|decimal|&gt;("DiscountRate", Convert.ToDecimal(txtcurrentdiscount.PercentValue)); 
+	         if(!DBNull.Value.Equals(x["ReceiptType"]))
+	                   l_ItemPiece.SetField&lt;|Int16|&gt;("ReceiptType", Convert.ToInt16(x["ReceiptType"]));
+	         if(!DBNull.Value.Equals(x["ReceiptSubType"]))
+	                   l_ItemPiece.SetField&lt;|Int16|&gt;("ReceiptSubType", Convert.ToInt16(x["ReceiptSubType"]));
+	         if(BaseObject.ActiveEntity.Data.Tables[tableName].Columns.Contains("OrderReceiptId") &amp;&amp; !DBNull.Value.Equals(x["OrderReceiptId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("OrderReceiptId",Convert.ToInt32(x["OrderReceiptId"]));
+	         if(BaseObject.ActiveEntity.Data.Tables[tableName].Columns.Contains("InventoryReceiptId") &amp;&amp; !DBNull.Value.Equals(x["InventoryReceiptId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("InventoryReceiptId", Convert.ToInt32(x["InventoryReceiptId"]));
+	         if(!DBNull.Value.Equals(x["ReceiptDate"]))
+	                   l_ItemPiece.SetField&lt;|DateTime|&gt;("ReceiptDate", Convert.ToDateTime(x["ReceiptDate"]));
+	         if(!DBNull.Value.Equals(x["CostCenterId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("CostCenterId", Convert.ToInt32(x["CostCenterId"]));
+	         if(BaseObject.ActiveEntity.Data.Tables[tableName].Columns.Contains("WarehouseId"))
+	         {
+	         	if(!DBNull.Value.Equals(x["WarehouseId"]))
+	            	l_ItemPiece.SetField&lt;|int|&gt;("WarehouseId", Convert.ToInt32(x["WarehouseId"]));
+	         }else
+	         {
+	         	if(!DBNull.Value.Equals(x["InWarehouseId"]))
+	            	l_ItemPiece.SetField&lt;|int|&gt;("InWarehouseId", Convert.ToInt32(x["InWarehouseId"]));
+	         	if(!DBNull.Value.Equals(x["OutWarehouseId"]))
+	            	l_ItemPiece.SetField&lt;|int|&gt;("OutWarehouseId", Convert.ToInt32(x["OutWarehouseId"]));
+	         }
+	         
+	         if(!DBNull.Value.Equals(x["EmployeeId"]))
+	                   l_ItemPiece.SetField&lt;|int|&gt;("EmployeeId", Convert.ToInt32(x["EmployeeId"]));
+	         if(!DBNull.Value.Equals(x["CustomerOrderNo"]))
+	                   l_ItemPiece.SetField&lt;|string|&gt;("CustomerOrderNo",x["CustomerOrderNo"].ToString());
+	
+	         l_ItemPiece.SetField&lt;|bool|&gt;("IsTaxExempted", false); 
+	         l_ItemPiece.SetField&lt;|decimal|&gt;("ForexRate", 0.0m); 
+	         l_ItemPiece.SetField&lt;|decimal|&gt;("ForexUnitPrice", 0.0m); 
+	         //l_ItemPiece.SetField&lt;|bool|&gt;("IsRejected", false);
+	         l_ItemPiece.SetField&lt;|bool|&gt;("IsDeleted", false);
+	         l_ItemPiece.SetField&lt;|Byte|&gt;("ControlCode", (Byte)0);
+	         l_ItemPiece.SetField&lt;|DateTime|&gt;("InsertedAt", DateTime.Now);
+	         l_ItemPiece.SetField&lt;|int|&gt;("InsertedBy", BaseObject.ActiveSession.User.RecId);
+		}
+		txtcurrentdiscount.PercentValue=0d;
+	}
+	
+	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("ItemType = 50"))
+	{
+		if(!ri.IsNull("DiscountRate") &amp;&amp; Convert.ToDouble(ri["DiscountRate"]) == txtcurrentdiscount.PercentValue)
+		{
+			if(sender.Name.Contains("Up"))
+				ri.SetField&lt;|decimal|&gt;("DiscountRate", Convert.ToDecimal(txtnewdiscount.PercentValue));
+			else if(sender.Name.Contains("Rem"))
+				ri.Delete();
+		}
+	}
+}
+
+function OnQtyButtonsClick(sender, ev)
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	txtQuantity = BaseObject.FindControl("txtQuantity");
+	if(txtQuantity == null)
+		return null;
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+		return null;
+	
+	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select(filter))
+	{
+		baseQty = 0m;
+		if(!ri.IsNull("Quantity"))
+			baseQty = Convert.ToDecimal(ri["Quantity"]);
+		
+		if(sender.Name.Contains("Up"))
+			ri.SetField&lt;|decimal|&gt;("Quantity", Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Inc"))
+			ri.SetField&lt;|decimal|&gt;("Quantity", baseQty + Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Dec") &amp;&amp; (baseQty - Convert.ToDecimal(txtQuantity.Value)) &gt; 0m)
+			ri.SetField&lt;|decimal|&gt;("Quantity", baseQty - Convert.ToDecimal(txtQuantity.Value));
+		else if(sender.Name.Contains("Remove"))
+			ri.Delete();
+	}
+	
+	updateSum();
+}
+
+function OnComboBoxSelectionChanged(sender, ev)
+{
+	control = sender.Name.Replace("cb", "cls");
+	
+	cls = BaseObject.FindControl(control);
+
+	if(cls == null)
+		return null;
+	
+	if(sender != null &amp;&amp; sender.SelectedItems != null &amp;&amp; sender.SelectedItems.Count &gt; 0)
+		cls.Visibility = Visibility.Visible;
+	else
+		cls.Visibility = Visibility.Hidden;
+		
+	updateSum();
+}
+
+function ClsOnPreviewMouseDown(sender, ev)
+{	
+	control = sender.Name.Replace("cls", "cb");
+	
+	cb = BaseObject.FindControl(control);
+	if(cb != null &amp;&amp; cb.SelectedItems != null &amp;&amp; cb.SelectedItems.Count &gt; 0)
+		cb.SelectedItems.Clear();
+}
+
+function SetLabelPrice(ctrl, val)
+{
+	SetLabelPriceIn(ctrl,val,-1);
+}
+
+function SetLabelPriceIn(ctrl, val, val2)
+{
+	price=0.00m;
+	if(!DBNull.Value.Equals(val))
+		price = Convert.ToDecimal(val);
+	
+	lblTarget = BaseObject.FindControl(ctrl);
+	if(lblTarget != null)
+	{
+		if(val2 &lt;= 0)
+			lblTarget.Content = ": " + String.Format("{0:N2}", price);
+		else
+			lblTarget.Content = ": " + String.Format("{0:N2}   ({1:D} Kalem)", price, Convert.ToInt32(val2));
+	}
+}
+
+function AddOnClickCb(ctrl, cb)
+{
+	btnSender = BaseObject.FindControl(ctrl);
+	if(btnSender != null)
+		btnSender.Click += cb;
+}
+
+function getFilter()
+{
+	cbSubGroup = BaseObject.FindControl("cbSubGroup");
+	cbMark = BaseObject.FindControl("cbMark");
+	
+    filter = String.Empty;
+    
+    if(cbSubGroup != null &amp;&amp; cbSubGroup.SelectedItems != null &amp;&amp; cbSubGroup.SelectedItems.Count &gt; 0)
+    {
+            filter += "UD_AltGrup in (\'sql_error_pred\'";
+            foreach(subG in cbSubGroup.SelectedItems)
+                filter += ",\'" + subG.ToString() + "\'";
+            filter += ")";
+        }
+
+    if(cbMark != null &amp;&amp; cbMark.SelectedItems != null &amp;&amp; cbMark.SelectedItems.Count &gt; 0)
+    {
+    if(filter != "")
+    filter += " and ";
+    
+    filter += "UD_Marka in (\'sql_error_pred\'";
+            foreach(mark in cbMark.SelectedItems)
+                filter += ",\'" + mark.ToString() + "\'";
+            filter += ")";
+    }
+	
+	return filter;
+}
+
+function updateSum()
+{
+	tableName = ValidateEntity();
+	if(tableName == String.Empty)
+		return null;
+		
+	targetDataTable = BaseObject.ActiveEntity.Data.Tables[tableName];
+	
+	filter = getFilter();
+	
+	if(filter == String.Empty)
+	{
+		SetLabelPrice("lblsumQuantity", 0);
+		SetLabelPrice("lblsumItem", 0);
+		SetLabelPrice("lblsumDiscount", 0);
+		SetLabelPrice("lblsumNetItem", 0);
+		SetLabelPrice("lblsumVat", 0);
+		SetLabelPrice("lblsum", 0);
+	}else
+	{
+		itemcount = targetDataTable.Compute("Count(Quantity)",filter);
+		qty = targetDataTable.Compute("SUM(Quantity)",filter);
+		itemtotal = targetDataTable.Compute("SUM(ItemTotal)",filter);
+		discountstotal = targetDataTable.Compute("SUM(DiscountsTotal)",filter);
+		netitemtotal = targetDataTable.Compute("SUM(NetItemTotal)",filter);
+		vatamount = targetDataTable.Compute("SUM(VatAmount)",filter);
+		sum = targetDataTable.Compute("SUM(UD_KdvliTutar)",filter);
+		
+		SetLabelPriceIn("lblsumQuantity", qty, itemcount);
+		SetLabelPrice("lblsumItem", itemtotal);
+		SetLabelPrice("lblsumDiscount", discountstotal);
+		SetLabelPrice("lblsumNetItem", netitemtotal);
+		SetLabelPrice("lblsumVat", vatamount);
+		SetLabelPrice("lblsum", sum);
+	}
+}
+
+function OnViewLoaded(sender, ev)
+{
+		if(BaseObject == null) 
+        return null;
+    
+	AddOnClickCb("btnUpdateDiscount", OnDiscountButtonsClick);
+	AddOnClickCb("btnAddDiscount", OnDiscountButtonsClick);
+	AddOnClickCb("btnRemoveDiscount", OnDiscountButtonsClick);
+	AddOnClickCb("btnRemoveRecords", OnQtyButtonsClick);
+	AddOnClickCb("btnUpdateQuantity",OnQtyButtonsClick);
+	AddOnClickCb("btnDecreaseQuantity", OnQtyButtonsClick);
+	AddOnClickCb("btnIncreaseQuantity", OnQtyButtonsClick);
+
+	clsMark = BaseObject.FindControl("clsMark");
+	clsSubGroup = BaseObject.FindControl("clsSubGroup");
+	
+	if(clsMark != null)
+		clsMark.PreviewMouseDown += ClsOnPreviewMouseDown;
+		
+	if(clsSubGroup != null)
+		clsSubGroup.PreviewMouseDown += ClsOnPreviewMouseDown;
+
+	cbSubGroup = BaseObject.FindControl("cbSubGroup");
+	cbMark = BaseObject.FindControl("cbMark");
+
+	if(cbSubGroup != null &amp;&amp; cbSubGroup.Items.Count == 0)
+	{
+		groupsinusage = new List&lt;|string|&gt;();
+		
+		tableName = ValidateEntity();
+		
+		if(tableName != String.Empty)
+		{
+			cbSubGroup.Items.Add("");
+	     	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("UD_AltGrup IS NOT NULL"))
+				groupsinusage.Add(ri["UD_AltGrup"].ToString());
+	        
+	        uniqgroups = groupsinusage.Distinct&lt;|string|&gt;().ToList&lt;|string|&gt;();
+	        foreach(group in uniqgroups)
+	        	cbSubGroup.Items.Add(group);
+	    	cbSubGroup.SelectionChanged += OnComboBoxSelectionChanged;
+		}
+	}
+	
+	if(cbMark != null &amp;&amp; cbMark.Items.Count == 0)
+	{
+		marksinusage = new List&lt;|string|&gt;();
+		
+		tableName = ValidateEntity();
+		
+		if(tableName != String.Empty)
+		{
+			cbMark.Items.Add("");
+	     	foreach(ri in BaseObject.ActiveEntity.Data.Tables[tableName].Select("UD_Marka IS NOT NULL"))
+				marksinusage.Add(ri["UD_Marka"].ToString());
+	        
+	        uniqmarks = marksinusage.Distinct&lt;|string|&gt;().ToList&lt;|string|&gt;();
+	        foreach(mark in uniqmarks)
+	        	cbMark.Items.Add(mark);
+	    	cbMark.SelectionChanged += OnComboBoxSelectionChanged;
+		}
+	}
+}
+
+function OnColumnChanged(sender, ev)
+{
+	if(BaseObject == null || BaseObject.CurrentRow == null || BaseObject.CurrentRow.Row == null || !ev.Row.Table.Columns.Contains("InventoryId") || !ev.Row.Table.Columns.Contains("UD_AltGrup") || !ev.Row.Table.Columns.Contains("UD_Marka"))
+		return null;
+
+	if(BaseObject.CurrentRow.Row.IsNull("ReceiptType") || BaseObject.CurrentRow.Row["ReceiptType"].ToString()=="140")
+        return null;
+
+	if(ev.Column.ColumnName != "InventoryId" || ev.Row.IsNull(ev.Column))
+		return null;
+	
+	r = UtilityFunctions.GetDataTableList(BaseObject.ActiveSession.DBInfo.DBProvider, BaseObject.ActiveSession.DBInfo.Connection, null, "r", "select i.UD_AltGrup alt,(select m.MarkName from IM_Mark m where m.RecId= i.MarkId) as mark from IM_Item i WHERE RecId = " + ev.Row[ev.Column].ToString());
+	
+	if(r == null || r.Rows.Count &lt;= 0)
+		return null;
+	
+	if(ev.Row["UD_Marka"].ToString() != r.Rows[0]["mark"])
+		ev.Row.SetField&lt;|string|&gt;("UD_Marka", r.Rows[0]["mark"]);
+		
+	if(ev.Row["UD_AltGrup"].ToString() != r.Rows[0]["alt"].ToString())
+		ev.Row.SetField&lt;|string|&gt;("UD_AltGrup", r.Rows[0]["alt"]);
+}</ScriptText>
+</ScriptDefinition>

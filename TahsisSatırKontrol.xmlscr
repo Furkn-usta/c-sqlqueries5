@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="TahsisSatırKontrol" Enabled="true" Priority="0" ScriptName="TahsisSatırKontrol">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 31.07.2023 14:56:54
+/*
+Tahsis Miktarı ve Reçete Miktarı Birbirinden Farklı ise Alım Sebebi Özel Alanı Seçilmesi Zorunlu Olacaktır. Ve Kayıt Onaysıza Çekilecektir.
+Manuel Olarak Onay İşlemi Değiştirilememesi İçin En Alt Kısımda Onay Durumunu Kontrol Edilmektedir.
+*/
+function OnBeforePost(sender,ev)
+{
+    if (BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType")
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1    
+    )
+    return null;
+
+    foreach(pli in BaseObject.Data.Tables["IM_ItemAllocation"].Select("OrderReceiptItemId is not null and Quantity is not null ")) 
+                {
+                //alloc_quant_m = "Tahsis Miktarı="+pli["Quantity"].ToString();
+                alloc_inven_rec = pli["OrderReceiptItemId"].ToString().Trim();
+                alloc_quant = Convert.ToDecimal(pli["Quantity"]);
+                                   
+    foreach(ri in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("Quantity is not null and RecId is not null")) 
+                {
+                row_rec = ri["RecId"].ToString().Trim();
+                //row_quant_m = "Satır Miktarı="+ri["Quantity"].ToString();   
+                row_quant = Convert.ToDecimal(ri["Quantity"]);
+
+                if(alloc_inven_rec == row_rec)
+ 				          	  {
+                                if(alloc_quant != row_quant)
+                                {
+                                    if(ri.IsNull("UD_ReasonForBuy") || ri["UD_ReasonForBuy"].ToString().Trim() == "")
+                                    {
+                                    	sender.ShowMessage("Tahsis Miktarı ve Reçete Miktarı Farklıysa Alım Sebebi Seçilmelidir.. {scr:TahsisSatırKontrol}");
+                                    	BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("IsApproved",0);
+                                        ev.Cancel = true;
+                                        return null;
+                                    }
+                                    /*
+                                    MessageBox.Show(alloc_quant_m +" - "+row_quant_m);
+                                    MessageBox.Show("Fiş Onaysıza Çekildi");
+                                    */
+                                    old_approved = 0m;
+                                  if (BaseObject.CurrentRow.Row["IsApproved", DataRowVersion.Original] != DBNull.Value)
+									old_approved = Convert.ToDecimal(ri["IsApproved", DataRowVersion.Original]);
+							
+									new_approved = 0m;
+									if (BaseObject.CurrentRow.Row["IsApproved"] != DBNull.Value)
+										new_approved = Convert.ToDecimal(ri["IsApproved"]);
+		  							if(old_approved != new_approved)
+		  							{
+		  								sender.ShowMessage("Tahsis Miktarı ve Reçete Miktarı Farklıyse Manuel Onay Durumu Değiştirilemez.. {scr:TahsisSatırKontrol}");
+		  								ev.Cancel = true;
+                                        return null;
+		  							}
+                                }
+                               
+                              }
+                }
+}
+}</ScriptText>
+</ScriptDefinition>

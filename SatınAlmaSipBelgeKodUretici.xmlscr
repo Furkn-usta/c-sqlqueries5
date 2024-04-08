@@ -1,0 +1,364 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSipBelgeKodUretici" Enabled="true" Priority="0" ScriptName="SatınAlmaSipBelgeKodUretici">
+  <Events>
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePostIn" ObjectName="InvoiceEN" />
+    <Event Enabled="true" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePostRec" ObjectName="InventoryReceiptEN" />
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePostOrRec" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="FurkanUsta" EntryDate="2023-04-17T00:00:00">
+      <Change>Satın alma taleplerinde belge numarası üretir.
+SAT-YIL-1 den başlayarak ilerler</Change>
+    </History>
+  </Histories>
+  <ScriptText>/*
+Satın alma taleplerinde belge numarası üretir.
+SAT-YIL-1 den başlayarak ilerler
+*/
+function OnBeforePostIn(sender,ev)
+
+{
+    if(BaseObject==null
+    ||BaseObject.CurrentRow==null
+    ||BaseObject.CurrentRow.Row==null
+    ||!BaseObject.IsNewRecord
+    ||!BaseObject.CurrentRow.Row.IsNull("UD_Kontrol")
+    /* ||(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1)
+   (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=122 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=22 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=11)*/
+    )
+    return null;
+	sat="SAT";
+	year=DateTime.Now.Year.ToString();
+	//MessageBox.Show(year);
+    query="select isnull(max(cast(UD_Numarator as int)),0)  [num] from IM_Invoice as I with (nolock)";
+    dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+
+    if(dt==null &amp;&amp; dt.Rows.Count&lt;0)
+    return null;    
+    document_no = sat+year;	
+	if(Convert.ToInt32(dt.Rows[0]["num"])==0)
+	{
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",1);   
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);
+   	BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000000001");   
+   	}
+    else
+    {
+      /*
+      BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);  
+      BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+      */
+        if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 1 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9 )
+        {
+    
+        num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000000000"+num_.ToString());   
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99 )
+        {
+        
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00000"+num_.ToString()); 
+        }
+         else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);   
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000"+num_.ToString()); 
+        }
+         else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000"+num_.ToString()); 
+        }
+           else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00"+num_.ToString()); 
+        }
+            else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0"+num_.ToString()); 
+        }
+        else
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+num_.ToString()); 
+        }
+
+	}
+
+}
+
+function OnBeforePostRec(sender,ev)
+
+{
+
+    if(BaseObject==null
+    ||BaseObject.CurrentRow==null
+    ||BaseObject.CurrentRow.Row==null
+    ||!BaseObject.IsNewRecord
+    ||!BaseObject.CurrentRow.Row.IsNull("UD_Kontrol")
+   /*  ||(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1)
+   (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=122 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=22 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=11)*/
+    )
+    return null;
+   
+	sat="SAT";
+	year=DateTime.Now.Year.ToString();
+	//MessageBox.Show(year);
+    query="select isnull(max(cast(R.UD_Numarator as int)),0)  [num] from IM_Receipt as R with (nolock)";
+    dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+
+    if(dt==null &amp;&amp; dt.Rows.Count&lt;0)
+    return null;    
+    document_no = sat+year;	
+	if(Convert.ToInt32(dt.Rows[0]["num"])==0)
+	{
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",1);   
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);
+   	BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000000001");   
+   	}
+    else
+    {
+    
+      /*
+      BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);  
+      BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+      */
+        if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 1 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9 )
+        {
+        
+        num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000000000"+num_.ToString());   
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99 )
+        {
+       
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00000"+num_.ToString()); 
+        }
+         else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);   
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000"+num_.ToString()); 
+        }
+         else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000"+num_.ToString()); 
+        }
+           else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00"+num_.ToString()); 
+        }
+            else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0"+num_.ToString()); 
+        }
+        else
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+num_.ToString()); 
+        }
+
+	}
+
+}
+
+function OnBeforePostOrRec(sender,ev)
+
+{
+    if(BaseObject==null
+    ||BaseObject.CurrentRow==null
+    ||BaseObject.CurrentRow.Row==null
+    ||!BaseObject.IsNewRecord
+    ||!BaseObject.CurrentRow.Row.IsNull("UD_Kontrol")
+    /* ||(Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1)
+   (Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=1 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=122 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=22 
+    &amp;&amp; Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"])!=11)*/
+    )
+    return null;
+	sat="SAT";
+	year=DateTime.Now.Year.ToString();
+	//MessageBox.Show(year);
+    query="select isnull(max(cast(ORR.UD_Numarator as int)),0)  [num] from IM_OrderReceipt as ORR with (nolock)";
+    dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+
+    if(dt==null &amp;&amp; dt.Rows.Count&lt;0)
+    return null;    
+    document_no = sat+year;	
+	if(Convert.ToInt32(dt.Rows[0]["num"])==0)
+	{
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",1);   
+    BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);
+   	BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000000001");   
+   	}
+    else
+    {
+    
+      /*
+      BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);  
+      BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+      */
+        if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 1 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9 )
+        {
+        
+        num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000000000"+num_.ToString());   
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99 )
+        {
+       
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000000"+num_.ToString()); 
+        }
+        else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00000"+num_.ToString()); 
+        }
+         else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);   
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0000"+num_.ToString()); 
+        }
+         else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 9999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"000"+num_.ToString()); 
+        }
+           else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 9999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 99999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"00"+num_.ToString()); 
+        }
+            else if(Convert.ToInt32(dt.Rows[0]["num"]) &gt;= 99999999 &amp;&amp; Convert.ToInt32(dt.Rows[0]["num"]) &lt; 999999999 )
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+"0"+num_.ToString()); 
+        }
+        else
+        {
+         num_ = Convert.ToInt32(dt.Rows[0]["num"]) + 1;
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Kontrol",1);  
+        BaseObject.CurrentRow.Row.SetField&lt;|int|&gt;("UD_Numarator",Convert.ToInt32(dt.Rows[0]["num"])+1); 
+        BaseObject.CurrentRow.Row.SetField&lt;|string|&gt;("DocumentNo",document_no+num_.ToString()); 
+        }
+
+	}
+
+}
+</ScriptText>
+</ScriptDefinition>

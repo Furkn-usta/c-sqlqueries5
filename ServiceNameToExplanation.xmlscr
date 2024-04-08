@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="Faturada hizmet kodunu açiklamaya yazdirma" Enabled="true" Priority="0" ScriptName="ServiceNameToExplanation">
+  <Events>
+    <Event Enabled="true" ObjectName="InvoiceEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InvoiceEN" />
+  </Events>
+  <Histories>
+    <History EditedBy="HS" EntryDate="2020-04-29T00:00:00">
+      <Change />
+    </History>
+  </Histories>
+  <ScriptText>function OnColumnChanged(sender, eventArg)
+{
+    if (BaseObject!=null &amp;&amp; BaseObject.CurrentRow != null &amp;&amp; eventArg.Row.Table.TableName == "IM_ReceiptItem" &amp;&amp; eventArg.Column.ColumnName=="ServiceCardId" &amp;&amp; !eventArg.Row.IsNull("ServiceCardId"))
+	{
+		dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "SM_Service", "select isnull(ServiceName,\'\') ServiceName from SM_Service with (nolock) where RecId = "+eventArg.Row["ServiceCardId"].ToString());
+		if(dt!=null &amp;&amp; dt.Rows.Count&gt;0)
+		{
+			eventArg.Row[eventArg.Row.Table.Columns["Explanation"]]=dt.Rows[0][dt.Columns["ServiceName"]];
+		}
+	}
+}</ScriptText>
+</ScriptDefinition>

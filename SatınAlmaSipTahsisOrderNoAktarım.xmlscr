@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="SatınAlmaSipTahsisOrderNoAktarım" Enabled="true" Priority="0" ScriptName="SatınAlmaSipTahsisOrderNoAktarım">
+  <Events>
+    <Event Enabled="true" ObjectName="OrderReceiptEN" />
+    <Event Enabled="true" EventName="BeforePost" FunctionName="OnBeforePost" ObjectName="OrderReceiptEN" />
+  </Events>
+  <Histories />
+  <ScriptText>
+//Generated on 15.06.2023 09:12:04
+function OnBeforePost(sender, ev)
+{
+order_no_ ="";
+
+    if( BaseObject == null 
+    || BaseObject.CurrentRow == null 
+    || BaseObject.CurrentRow.Row == null
+    || BaseObject.CurrentRow.Row.IsNull("ReceiptType") 
+    || Convert.ToInt32(BaseObject.CurrentRow.Row["ReceiptType"]) != 1 )
+		return null;
+
+        foreach(ia in BaseObject.Data.Tables["IM_ItemAllocation"].Select("WorkOrderItemId is not null"))
+                {
+                 query = "select top 1 isnull(WO.WorkOrderNo,\'\') [order_no] from MA_WorkOrder WO with (nolock) where RecId = isnull((select top 1 isnull(WOI.WorkOrderId,0) from MA_WorkOrderItem WOI with (nolock) where RecId =\'"+ia["WorkOrderItemId"].ToString()+"\'),0)";
+                 dt_query_ = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt_query_",query);
+					if(dt_query_==null || dt_query_.Rows.Count&lt;0)
+						return null;
+    				order_no_ = order_no_ + dt_query_.Rows[0]["order_no"].ToString() + " , ";
+                }
+       foreach(ori in BaseObject.Data.Tables["IM_OrderReceiptItem"].Select("RecId is not null"))
+                {
+                ori.SetField&lt;|string|&gt;("ManufacturingOrderNo",order_no_.ToString());                
+                }
+}</ScriptText>
+</ScriptDefinition>

@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<ScriptDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Description="ReçeteÖzelAlanTaşıma" Enabled="true" Priority="0" ScriptName="ReçeteÖzelAlanTaşıma">
+  <Events>
+    <Event Enabled="true" ObjectName="InventoryEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnColumnChanged" ObjectName="InventoryEN" />
+    <Event Enabled="true" EventName="ColumnChanged" FunctionName="OnTWColumnChanged" ObjectName="TWorkOrderEN" />
+  </Events>
+  <Histories />
+  <ScriptText>//Generated on 26.12.2023 11:28:27 ReçeteÖzelAlanTaşıma
+function OnColumnChanged(sender, e)
+{
+	if (BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null
+	|| BaseObject.CurrentRow.Row.IsNull("IsSample") 
+	|| BaseObject.CurrentRow.Row.IsNull("InventoryType"))
+		return null;
+		
+	if((BaseObject.CurrentRow.Row["IsSample"].ToString().Trim() == "False" &amp;&amp; BaseObject.CurrentRow.Row["InventoryType"].ToString().Trim() == "99") 
+    || (BaseObject.CurrentRow.Row["IsSample"].ToString().Trim() == "True" &amp;&amp; BaseObject.CurrentRow.Row["InventoryType"].ToString().Trim() == "100") )
+	{
+//MessageBox.Show(e.Column.ColumnName.ToString());
+/*	*/
+		if(BaseObject.Extensions.ContainsKey("InventoryRecipeAccessoryServiceExtension") 
+		&amp;&amp; e.Row.Table.TableName == "MA_RecipeItem" 
+		&amp;&amp; e.Column.ColumnName == "InventoryId" 
+		&amp;&amp; !e.Row.IsNull("ItemType") &amp;&amp; Convert.ToInt16(e.Row["ItemType"]) == 1)
+		{
+			query = "select isnull(I.UD_ModelTuru,\'\') [mdl_tr] from IM_Item I with (nolock) where I.RecId=\'"+e.Row["InventoryId"].ToString()+"\'";
+			dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+				if(dt == null || dt.Rows.Count &lt;= 0)
+					return null;
+					
+			mdl_ = dt.Rows[0]["mdl_tr"].ToString();
+		
+			 drs = BaseObject.Extensions["InventoryRecipeServiceExtension"].RecipeTable.Select("OriginalRowId = " + e.Row["RecId"].ToString());
+			 //	MessageBox.Show(drs.ToString());
+			if(drs != null &amp;&amp; drs.Length &gt; 0)
+			{
+				//	MessageBox.Show(mdl_.ToString());
+				drs[0].SetField&lt;|string|&gt;("UD_B",mdl_.ToString()); 
+				e.Row.SetField&lt;|string|&gt;("UD_B",mdl_.ToString()); 
+			}
+	
+	}
+}
+}
+function OnTWColumnChanged(sender, e)
+{
+	if (BaseObject == null 
+	|| BaseObject.CurrentRow == null 
+	|| BaseObject.CurrentRow.Row == null)
+		return null;
+			if(BaseObject.Extensions.ContainsKey("InventoryRecipeAccessoryServiceExtension") 
+		&amp;&amp; e.Row.Table.TableName == "MA_RecipeItem" 
+		&amp;&amp; e.Column.ColumnName == "InventoryId" 
+		&amp;&amp; !e.Row.IsNull("ItemType") &amp;&amp; Convert.ToInt16(e.Row["ItemType"]) == 1)
+		{
+			query = "select isnull(I.UD_ModelTuru,\'\') [mdl_tr] from IM_Item I with (nolock) where I.RecId=\'"+e.Row["InventoryId"].ToString()+"\'";
+			dt = UtilityFunctions.GetDataTableList(BaseObject.Provider, BaseObject.Connection, BaseObject.Transaction, "dt",query);
+				if(dt == null || dt.Rows.Count &lt;= 0)
+					return null;
+					
+			mdl_ = dt.Rows[0]["mdl_tr"].ToString();
+		
+			 drs = BaseObject.Extensions["InventoryRecipeServiceExtension"].RecipeTable.Select("OriginalRowId = " + e.Row["RecId"].ToString());
+			 //	MessageBox.Show(drs.ToString());
+			if(drs != null &amp;&amp; drs.Length &gt; 0)
+			{
+				//	MessageBox.Show(mdl_.ToString());
+				drs[0].SetField&lt;|string|&gt;("UD_B",mdl_.ToString()); 
+				e.Row.SetField&lt;|string|&gt;("UD_B",mdl_.ToString()); 
+			}
+	
+	}
+}</ScriptText>
+</ScriptDefinition>
